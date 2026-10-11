@@ -1,0 +1,394 @@
+{
+  "master_seed": 20260822,
+  "results_dir": "results/campaign",
+  "n_jobs": 4,
+  "reference_strategy": "margin",
+  "learners": [
+    "logreg",
+    "rf",
+    "gbdt"
+  ],
+  "strategies": [
+    "margin",
+    "margin_rtb",
+    "entropy",
+    "least_confident",
+    "random",
+    "robust_uncertainty",
+    "committee",
+    "committee_learner",
+    "coreset",
+    "kmeans_diversity",
+    "typiclust",
+    "probcover",
+    "uherding",
+    "dcf",
+    "constrained_cover",
+    "rareguard",
+    "adaptive_repulsion",
+    "most_likely_positive",
+    "ens",
+    "class_balanced",
+    "anchoral",
+    "similar_flqmi",
+    "galaxy",
+    "direct",
+    "tailor",
+    "albl",
+    "rca"
+  ],
+  "budgets": {
+    "main": {
+      "n_init": 30,
+      "batch": 8,
+      "rounds": 20
+    }
+  },
+  "starts": [
+    "warm"
+  ],
+  "data": {
+    "test_fraction": 0.3,
+    "cache_dir": "data/cache",
+    "raw_dir": "data/domain",
+    "real_n_max": 10000,
+    "min_rare": 100,
+    "rare27_dir": "data/rare27",
+    "standard20_dir": "data/standard20"
+  },
+  "endpoints": {
+    "capacities": [
+      0.01,
+      0.05
+    ],
+    "k_list": [
+      1,
+      5,
+      10
+    ],
+    "cost_fn": 1.0,
+    "cost_fp": 1.0
+  },
+  "active_learning": {
+    "n_init": 30,
+    "batch": 8,
+    "rounds": 20,
+    "min_rare": 50
+  },
+  "real_benchmark": {
+    "datasets": "all",
+    "seeds": 10
+  },
+  "image_benchmark": {
+    "embedding_cache_dirs": [
+      "data/embeddings"
+    ],
+    "data_root": "data/images",
+    "backbones": [
+      "dinov2_vits14",
+      "resnet18"
+    ],
+    "max_pool": 10000,
+    "default_ir": 99,
+    "min_rare": 50,
+    "seeds": 3,
+    "datasets": [
+      {
+        "dataset": "pcam",
+        "domain": "medicine",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          1
+        ],
+        "target_irs": [
+          49,
+          99
+        ]
+      },
+      {
+        "dataset": "cifar10",
+        "domain": "natural",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0,
+          1
+        ],
+        "target_irs": [
+          49,
+          99
+        ]
+      },
+      {
+        "dataset": "cifar100",
+        "domain": "natural",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99,
+          199
+        ]
+      },
+      {
+        "dataset": "stl10",
+        "domain": "natural",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49
+        ]
+      },
+      {
+        "dataset": "svhn",
+        "domain": "digits",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "eurosat",
+        "domain": "remote_sensing",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49,
+          99
+        ]
+      },
+      {
+        "dataset": "gtsrb",
+        "domain": "traffic",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "food101",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99,
+          199
+        ]
+      },
+      {
+        "dataset": "caltech101",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "flowers102",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49,
+          99
+        ]
+      },
+      {
+        "dataset": "fgvc_aircraft",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49
+        ]
+      },
+      {
+        "dataset": "oxford_iiit_pet",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49
+        ]
+      },
+      {
+        "dataset": "dtd",
+        "domain": "fine_grained",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49
+        ]
+      },
+      {
+        "dataset": "fashion_mnist",
+        "domain": "digits",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "mnist",
+        "domain": "digits",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "kmnist",
+        "domain": "digits",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      },
+      {
+        "dataset": "emnist_balanced",
+        "domain": "digits",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          99
+        ]
+      }
+    ]
+  },
+  "synthetic_grid": {
+    "n_samples": 2500,
+    "regimes": [
+      "central",
+      "peripheral",
+      "overlap",
+      "multimodal",
+      "compact",
+      "diffuse"
+    ],
+    "irs": [
+      1,
+      5,
+      10,
+      20,
+      50,
+      100
+    ],
+    "dims": [
+      6,
+      15
+    ],
+    "seps": [
+      1.0,
+      2.0
+    ],
+    "seeds": 10,
+    "min_rare": 20
+  },
+  "rarity_stress": {
+    "regime": "peripheral",
+    "n_samples": 3000,
+    "dim": 15,
+    "sep": 2.0,
+    "irs": [
+      1,
+      2,
+      5,
+      10,
+      20,
+      30,
+      50,
+      75,
+      100
+    ],
+    "seeds": 15,
+    "min_rare": 20
+  },
+  "oracle": {
+    "classifier": "logreg",
+    "learners": [
+      "logreg"
+    ],
+    "n_samples": 1600,
+    "regimes": [
+      "central",
+      "peripheral",
+      "overlap",
+      "multimodal",
+      "compact",
+      "diffuse"
+    ],
+    "irs": [
+      10,
+      60
+    ],
+    "dims": [
+      6,
+      12
+    ],
+    "seps": [
+      1.0,
+      1.5
+    ],
+    "seeds": 3,
+    "min_rare": 20,
+    "states": 4,
+    "candidate_mult": 4,
+    "n_regions": 4,
+    "k_list": [
+      1,
+      3,
+      5
+    ],
+    "candidates": "margin_top",
+    "budget": {
+      "n_init": 30,
+      "batch": 8,
+      "rounds": 20
+    },
+    "policies": [
+      "margin", "margin_rtb", "entropy", "least_confident", "random",
+      "robust_uncertainty", "committee", "committee_learner", "coreset",
+      "kmeans_diversity", "typiclust", "probcover", "uherding", "dcf",
+      "constrained_cover", "rareguard", "adaptive_repulsion", "most_likely_positive",
+      "ens", "class_balanced", "anchoral", "similar_flqmi", "galaxy", "direct",
+      "tailor", "albl", "rca"
+    ]
+  },
+  "observability": {
+    "oracle_threshold": 0.0
+  }
+}

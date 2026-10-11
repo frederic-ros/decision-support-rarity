@@ -1,0 +1,30 @@
+{
+  "extends": "full.json",
+  "results_dir": "results/first_pass",
+  "n_jobs": 4,
+  "learners": ["logreg", "rf"],
+  "strategies": [
+    "margin", "random", "most_likely_positive", "anchoral",
+    "class_balanced", "rca", "coreset", "committee"
+  ],
+  "budgets": {"main": {"n_init": 30, "batch": 8, "rounds": 12}},
+  "real_benchmark": {"datasets": "all", "seeds": 3},
+  "image_benchmark": {
+    "embedding_cache_dirs": ["data/embeddings"],
+    "backbones": ["dinov2_vits14", "resnet18"],
+    "max_pool": 10000,
+    "default_ir": 99,
+    "min_rare": 50,
+    "seeds": 2,
+    "datasets": [
+      {"dataset": "pcam", "domain": "medicine", "rarity": "one_vs_rest",
+       "positive_classes": [1], "target_irs": [99]},
+      {"dataset": "cifar10", "domain": "natural", "rarity": "one_vs_rest",
+       "positive_classes": [0], "target_irs": [99]},
+      {"dataset": "eurosat", "domain": "remote_sensing", "rarity": "one_vs_rest",
+       "positive_classes": [0], "target_irs": [49]},
+      {"dataset": "food101", "domain": "fine_grained", "rarity": "one_vs_rest",
+       "positive_classes": [0], "target_irs": [99]}
+    ]
+  }
+}

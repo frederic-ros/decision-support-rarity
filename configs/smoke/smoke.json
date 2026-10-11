@@ -1,0 +1,156 @@
+{
+  "master_seed": 20260822,
+  "results_dir": "results/smoke",
+  "n_jobs": 1,
+  "reference_strategy": "margin",
+  "learners": [
+    "logreg"
+  ],
+  "strategies": [
+    "margin",
+    "random",
+    "most_likely_positive",
+    "rca",
+    "anchoral"
+  ],
+  "budgets": {
+    "main": {
+      "n_init": 20,
+      "batch": 8,
+      "rounds": 3
+    }
+  },
+  "starts": [
+    "warm"
+  ],
+  "data": {
+    "test_fraction": 0.3,
+    "cache_dir": "data/cache_smoke",
+    "raw_dir": "data/domain",
+    "real_n_max": 3000,
+    "min_rare": 30,
+    "rare27_dir": "data/rare27",
+    "standard20_dir": "data/standard20"
+  },
+  "endpoints": {
+    "capacities": [
+      0.01,
+      0.05
+    ],
+    "k_list": [
+      1,
+      5
+    ],
+    "cost_fn": 1.0,
+    "cost_fp": 1.0
+  },
+  "active_learning": {
+    "n_init": 20,
+    "batch": 8,
+    "rounds": 3,
+    "min_rare": 20
+  },
+  "real_benchmark": {
+    "datasets": [
+      "imblearn_mammography",
+      "imblearn_oil"
+    ],
+    "seeds": 2
+  },
+  "image_benchmark": {
+    "embedding_cache_dirs": [
+      "data/embeddings"
+    ],
+    "data_root": "data/images",
+    "backbones": [
+      "dinov2_vits14",
+      "resnet18"
+    ],
+    "max_pool": 3000,
+    "default_ir": 49,
+    "min_rare": 20,
+    "seeds": 2,
+    "datasets": [
+      {
+        "dataset": "cifar10",
+        "domain": "image",
+        "rarity": "one_vs_rest",
+        "positive_classes": [
+          0
+        ],
+        "target_irs": [
+          49
+        ]
+      }
+    ]
+  },
+  "synthetic_grid": {
+    "n_samples": 2000,
+    "regimes": [
+      "peripheral",
+      "overlap"
+    ],
+    "irs": [
+      10,
+      50
+    ],
+    "dims": [
+      6
+    ],
+    "seps": [
+      1.5
+    ],
+    "seeds": 2,
+    "min_rare": 20
+  },
+  "rarity_stress": {
+    "regime": "peripheral",
+    "n_samples": 2000,
+    "dim": 10,
+    "sep": 2.0,
+    "irs": [
+      5,
+      20,
+      50
+    ],
+    "seeds": 3,
+    "min_rare": 20
+  },
+  "oracle": {
+    "classifier": "logreg",
+    "learners": [
+      "logreg"
+    ],
+    "n_samples": 1200,
+    "regimes": [
+      "peripheral"
+    ],
+    "irs": [
+      20
+    ],
+    "dims": [
+      6
+    ],
+    "seps": [
+      1.5
+    ],
+    "seeds": 2,
+    "min_rare": 20,
+    "states": 2,
+    "candidate_mult": 3,
+    "n_regions": 3,
+    "k_list": [
+      1,
+      3
+    ],
+    "candidates": "margin_top",
+    "budget": {
+      "n_init": 20,
+      "batch": 8,
+      "rounds": 6
+    }
+  },
+  "observability": {
+    "oracle_threshold": 0.0
+  }
+}

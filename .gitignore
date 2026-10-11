@@ -1,0 +1,37 @@
+# ------------------------------------------------------------------
+# decision-support-rarity — .gitignore
+# Code, configs, runners, scripts, tests and docs are tracked.
+# Data and results are NOT: they are archived on Zenodo (DOI in README).
+# ------------------------------------------------------------------
+
+# Data and results (archived on Zenodo, regenerable with the code)
+data/
+results/
+
+# Python caches / build
+**/__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.ipynb_checkpoints/
+
+# Virtual environments
+.venv/
+venv/
+env/
+.env
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Archives and local scratch
+*.zip
+*.7z

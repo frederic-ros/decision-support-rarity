@@ -1,0 +1,51 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite both the software and the paper below."
+title: "decision-support-rarity: Risk-aware active learning under class rarity"
+abstract: >-
+  Companion software for the ESWA paper "Risk-aware active learning under class
+  rarity: A decision framework and cross-domain evaluation for expert systems".
+  It implements a strictly paired-trajectory protocol, an acquisition-risk
+  profile (lower quantile and material-loss probability), a non-maximized
+  discovery oracle with an exploitability ratio, and evidence-graded guidelines,
+  evaluated over 27 acquisition strategies, three downstream learners, a
+  synthetic grid, 42 real tabular datasets with preserved rarity, and 17 image
+  tasks on two frozen embeddings.
+type: software
+version: 2.0.0
+license: MIT
+repository-code: "https://github.com/frederic-ros/decision-support-rarity"
+url: "https://github.com/frederic-ros/decision-support-rarity"
+keywords:
+  - active learning
+  - class imbalance
+  - rare events
+  - risk assessment
+  - decision support
+  - expert systems
+authors:
+  - family-names: Ros
+    given-names: Frédéric
+    email: frederic.ros@univ-orleans.fr
+    affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: Bertrand-Bonvillain
+    given-names: Erwan
+    affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+  - family-names: Nasser
+    given-names: Yassine
+    affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
+    # orcid: "https://orcid.org/0000-0000-0000-0000"
+preferred-citation:
+  type: article
+  title: "Risk-aware active learning under class rarity: A decision framework and cross-domain evaluation for expert systems"
+  journal: "Expert Systems with Applications"
+  year: 2026
+  # doi: "10.1016/j.eswa.2026.XXXXXX"
+  authors:
+    - family-names: Ros
+      given-names: Frédéric
+    - family-names: Bertrand-Bonvillain
+      given-names: Erwan
+    - family-names: Nasser
+      given-names: Yassine
