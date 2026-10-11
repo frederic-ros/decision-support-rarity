@@ -11,7 +11,7 @@ and a discovery-oracle / observability probe. One script regenerates every table
 and figure in the paper from the archived results.
 
 - **Paper:** doi:10.1016/j.eswa.2026.XXXXXX
-- **Data & results archive (Zenodo):** doi:10.5281/zenodo.XXXXXXX
+- **Data & results archive (Zenodo):** doi:10.5281/zenodo.23292060
 - **License:** MIT (see [`LICENSE`](LICENSE)); bundled benchmark datasets keep their source licenses.
 
 > This release consolidates and extends our prior active-learning engine: the
@@ -64,7 +64,7 @@ numpy 2.4.6, scipy 1.17.1, pandas 3.0.6, statsmodels 0.15.0, matplotlib 3.11.2
 `data/` and `results/` are **not** tracked in this repository (they are large and
 regenerable). Two ways to get them:
 
-1. **Download the archive** from Zenodo (doi:10.5281/zenodo.XXXXXXX) and unzip the
+1. **Download the archive** from Zenodo (doi:10.5281/zenodo.23292060) and unzip the
    derived data into `data/` and the result records into `results/`. The archive
    bundles the image **embedding caches**, the moderate strata (`rare27`,
    `standard20`) and the run outputs (`campaign`, `first_pass`). See the archive's
@@ -167,7 +167,7 @@ If you use this software, please cite the paper and the archived release.
   version   = {2.0.0},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.XXXXXXX},
+  doi       = {10.5281/zenodo.23292060},
   url       = {https://github.com/frederic-ros/decision-support-rarity}
 }
 ```

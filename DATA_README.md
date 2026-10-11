@@ -1,7 +1,7 @@
 > **Availability.** `data/` and `results/` are not tracked in the git repository.
 > The derived, redistributable data (image embedding caches, the `rare27` and
 > `standard20` strata) and the result records are archived on Zenodo
-> (doi:10.5281/zenodo.XXXXXXX); see that record's `ARCHIVE_README.md`. The raw
+> (doi:10.5281/zenodo.23292060); see that record's `ARCHIVE_README.md`. The raw
 > third-party datasets below are obtained from their original providers with the
 > scripts in this repository.
 

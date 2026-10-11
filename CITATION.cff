@@ -12,6 +12,7 @@ abstract: >-
   tasks on two frozen embeddings.
 type: software
 version: 2.0.0
+doi: "10.5281/zenodo.23292060"
 license: MIT
 repository-code: "https://github.com/frederic-ros/decision-support-rarity"
 url: "https://github.com/frederic-ros/decision-support-rarity"
