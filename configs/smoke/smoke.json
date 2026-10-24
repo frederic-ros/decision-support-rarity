@@ -59,7 +59,8 @@
   },
   "image_benchmark": {
     "embedding_cache_dirs": [
-      "data/embeddings"
+      "data/embeddings",
+      "data/image_cache"
     ],
     "data_root": "data/images",
     "backbones": [
