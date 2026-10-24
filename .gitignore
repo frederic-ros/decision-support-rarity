@@ -5,8 +5,8 @@
 # ------------------------------------------------------------------
 
 # Data and results (archived on Zenodo, regenerable with the code)
-data/
-results/
+/data/
+/results/
 
 # Python caches / build
 **/__pycache__/
