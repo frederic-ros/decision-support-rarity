@@ -41,6 +41,8 @@ def fit_by_family(d: pd.DataFrame, descriptors=("pool_f1", "pool_n1", "pool_type
     terms = [t for t in terms if t.startswith("C(") or d[t].nunique() > 1]
     out = []
     for fam, g in d.groupby("family"):
+        if fam == "control":     # revision (R2.5): controls never enter family conclusions
+            continue
         agg = g.groupby([group, "learner", "budget", "strategy"] + [t for t in terms if not t.startswith("C(")]
                         + ["ir_stratum"], dropna=False)[response].mean().reset_index()
         if agg[group].nunique() < 3:

@@ -1,0 +1,35 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Revision (R3, budget claim): matched low-budget comparison. One trajectory with n_init=10 and batch=4 gives both 26 labels (round 4) and 94 labels (round 21), so the initial set and batch size are held fixed and only the budget varies. Matched subset of the earlier analysis. Run: rare-al run --config configs/eswa/rev_budget.json --only synthetic",
+  "results_dir": "results/revision/budget",
+  "n_jobs": 12,
+  "budgets": {
+    "low_matched": {
+      "n_init": 10,
+      "batch": 4,
+      "rounds": 21
+    },
+    "__replace__": true
+  },
+  "strategies": [
+    "margin",
+    "coreset",
+    "kmeans_diversity",
+    "probcover",
+    "typiclust",
+    "direct",
+    "most_likely_positive",
+    "class_balanced"
+  ],
+  "synthetic_grid": {
+    "irs": [
+      1,
+      10,
+      50,
+      100
+    ],
+    "seps": [
+      2.0
+    ]
+  }
+}

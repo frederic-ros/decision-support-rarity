@@ -93,7 +93,18 @@ def cmd_run(args):
             if "oracle" in cfg:
                 osts = list(S.synthetic_states(cfg, section="oracle", experiment="oracle"))
                 print(f"[run] oracle: {len(osts)} states", flush=True)
-                oracle_exp.run(cfg, osts, results / "oracle")
+                if int(cfg["oracle"].get("n_jobs", 1)) > 1:      # revision: sharded oracle
+                    from rare_al.experiments.oracle_parallel import run_parallel
+                    run_parallel(cfg, osts, results / "oracle")
+                else:
+                    oracle_exp.run(cfg, osts, results / "oracle")
+            continue
+        if section == "oracle_campaign":
+            # revision: full campaigns on the oracle states, all learners and strategies
+            if "oracle" in cfg:
+                csts = list(S.oracle_campaign_states(cfg))
+                print(f"[run] oracle_campaign: {len(csts)} states", flush=True)
+                run(cfg, csts, results / "oracle_campaign")
             continue
         if section == "observability":
             if "observability" in cfg and (results / "oracle" / "oracle_states.csv").exists():
@@ -174,6 +185,19 @@ def cmd_validate(args):
     print(f"[validate] assets -> {out}")
 
 
+def cmd_revision_report(args):
+    """Revision analyses (ESWA-D-26-42849): noise floor, worst cases, test positives,
+    fixed-test rarity effect, RQ3 multiplicity/equivalence, query- vs campaign-level
+    risk, alpha-sweep validation, pilot simulation, strata/source counts, matched
+    budget and learner sensitivity. Each section runs only if its inputs exist."""
+    cfg = load_config(args.config)
+    from rare_al.reporting.revision_report import build_revision
+    out = Path(args.out or (Path(cfg["results_dir"]) / "assets"))
+    rep = build_revision(cfg, campaign=args.campaign, revision=cfg["results_dir"], out=out,
+                         cache_dir=cfg["data"].get("cache_dir"), n_boot=args.n_boot)
+    print(f"[revision-report] {len(rep)} sections -> {out}", flush=True)
+
+
 def cmd_analyze(args):
     cfg = load_config(args.config)
     from rare_al.reporting.assets import build_all
@@ -206,7 +230,8 @@ def build_parser():
     p = sub.add_parser("run", help="run experiments")
     p.add_argument("--config", required=True)
     p.add_argument("--only", nargs="+", default=None,
-                   choices=["synthetic", "rarity", "real", "image", "oracle", "observability"],
+                   choices=["synthetic", "rarity", "real", "image", "oracle", "observability",
+                            "oracle_campaign"],
                    help="restrict to these experiments (default: synthetic rarity real image)")
     p.set_defaults(func=cmd_run)
 
@@ -216,6 +241,14 @@ def build_parser():
     p.add_argument("--v13", default=None, help="path to a v13 archive for provenance overlay")
     p.add_argument("--fast", action="store_true")
     p.set_defaults(func=cmd_analyze)
+
+    p = sub.add_parser("revision-report", help="revision analyses (reviewer requests)")
+    p.add_argument("--config", required=True, help="revision config (results_dir = revision runs)")
+    p.add_argument("--campaign", default="results/campaign",
+                   help="results dir of the reported campaign (synthetic/real/image/oracle)")
+    p.add_argument("--out", default=None)
+    p.add_argument("--n-boot", dest="n_boot", type=int, default=2000)
+    p.set_defaults(func=cmd_revision_report)
 
     p = sub.add_parser("validate-guidelines",
                        help="leave-one-domain-out out-of-sample validation of the decision procedure")

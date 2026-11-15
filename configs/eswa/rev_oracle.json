@@ -1,0 +1,15 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Revision R2.6, R2.8, R3.4: discovery oracle under LR, RF and GBDT on twice as many base states (seeds 0-5; 288 base states x 4 rounds), sharded over n_jobs processes, plus full campaigns on the same states (all strategies, all learners). Copy results/campaign/oracle/*.csv into results/revision/oracle/ first to reuse the published LR states. Run: rare-al run --config configs/eswa/rev_oracle.json --only oracle oracle_campaign",
+  "results_dir": "results/revision",
+  "n_jobs": 12,
+  "oracle": {
+    "learners": [
+      "logreg",
+      "rf",
+      "gbdt"
+    ],
+    "seeds": 6,
+    "n_jobs": 12
+  }
+}

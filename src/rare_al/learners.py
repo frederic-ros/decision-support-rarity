@@ -12,6 +12,8 @@ support the ESWA design:
 * ``rf_nobootstrap``  -- probability-resolution check (Section 4.4): without bootstrap
                          no tree is grown on a resample containing zero rare cases.
 * ``rf_leaf1_500``    -- probability-resolution check: finer probability grid.
+* ``rf_leaf5`` / ``gbdt_leaf5`` -- revision sensitivity (R2.4, R1.3): coarser leaves.
+* ``rf_trees50``      -- revision sensitivity: fewer trees (coarser probability grid).
 * ``tabpfn``          -- optional tabular foundation model (if installed).
 """
 from __future__ import annotations
@@ -32,9 +34,9 @@ def _rf(seed, weighted=True, bootstrap=True, n_estimators=200, min_samples_leaf=
                                   random_state=seed, n_jobs=1)
 
 
-def _gbdt(seed, weighted=True):
+def _gbdt(seed, weighted=True, min_samples_leaf=2):
     return HistGradientBoostingClassifier(
-        max_iter=200, learning_rate=0.1, max_leaf_nodes=15, min_samples_leaf=2,
+        max_iter=200, learning_rate=0.1, max_leaf_nodes=15, min_samples_leaf=min_samples_leaf,
         l2_regularization=1.0, class_weight="balanced" if weighted else None,
         early_stopping=False, random_state=seed)
 
@@ -63,7 +65,10 @@ LEARNERS = {
     "rf_unweighted": lambda s: _rf(s, weighted=False),
     "rf_nobootstrap": lambda s: _rf(s, bootstrap=False),
     "rf_leaf1_500": lambda s: _rf(s, n_estimators=500, min_samples_leaf=1),
+    "rf_leaf5": lambda s: _rf(s, min_samples_leaf=5),
+    "rf_trees50": lambda s: _rf(s, n_estimators=50),
     "gbdt": lambda s: _gbdt(s),
+    "gbdt_leaf5": lambda s: _gbdt(s, min_samples_leaf=5),
     "gbdt_unweighted": lambda s: _gbdt(s, weighted=False),
     "lightgbm": _lightgbm,
     "xgboost": _xgboost,
@@ -73,8 +78,8 @@ LEARNERS = {
 LEARNER_FAMILY = {
     "logreg": "linear", "logreg_unweighted": "linear",
     "rf": "bagged_trees", "rf_unweighted": "bagged_trees", "rf_nobootstrap": "bagged_trees",
-    "rf_leaf1_500": "bagged_trees",
-    "gbdt": "boosted_trees", "gbdt_unweighted": "boosted_trees", "lightgbm": "boosted_trees",
+    "rf_leaf1_500": "bagged_trees", "rf_leaf5": "bagged_trees", "rf_trees50": "bagged_trees",
+    "gbdt": "boosted_trees", "gbdt_leaf5": "boosted_trees", "gbdt_unweighted": "boosted_trees", "lightgbm": "boosted_trees",
     "xgboost": "boosted_trees", "tabpfn": "foundation",
 }
 

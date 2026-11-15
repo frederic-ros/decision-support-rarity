@@ -22,6 +22,34 @@ from rare_al.io import append_rows, completed_keys
 from rare_al.repro import stable_seed
 
 KEYS = ["state_id", "learner", "budget", "start", "strategy"]
+
+
+def fixed_test_set(state, cfg):
+    """Independent evaluation set with a fixed number of rare cases (revision, R3.3).
+
+    Drawn from the same generator (geometry, dimension, separation) with its own seed,
+    at the *realized* imbalance ratio of the state's pool, and mapped through the
+    scaler fitted on the state's training pool (exactly as the regular test set).
+    Returns ``{"fx": (X_eval, y_eval)}`` or ``{}`` when not requested/applicable."""
+    spec = state.get("fixed_test")
+    if not spec or state.get("kind") != "synthetic":
+        return {}
+    import numpy as np
+    from sklearn.model_selection import train_test_split
+    from sklearn.preprocessing import StandardScaler
+    from rare_al.data.synthetic import make_regime, realized_ir
+    n_pos = int(spec.get("n_pos", 100))
+    X, y = make_regime(state["regime"], state["n_samples"], state["d"], state["ir"], state["sep"],
+                       state["state_seed"], min_rare=state["min_rare"])
+    Xtr, _, _, _ = train_test_split(X, y, test_size=cfg["data"]["test_fraction"], stratify=y,
+                                    random_state=state["state_seed"])
+    scaler = StandardScaler().fit(Xtr)
+    ir_r = realized_ir(state["n_samples"], state["ir"], state["min_rare"])
+    n_eval = n_pos + int(round(n_pos * ir_r))
+    seed = stable_seed(cfg["master_seed"], "fixed-test", state["regime"], state["ir"], state["d"],
+                       state["sep"], state["seed"])
+    Xe, ye = make_regime(state["regime"], n_eval, state["d"], ir_r, state["sep"], seed, min_rare=n_pos)
+    return {"fx": (scaler.transform(Xe), np.asarray(ye))}
 ID_FIELDS = ["experiment", "dataset", "domain", "origin", "regime", "ir", "ir_nominal", "d",
              "sep", "seed", "state_id", "state_seed", "split",
              "backbone", "positive_class", "ir_target"]
@@ -35,6 +63,10 @@ def _run_state(state, cfg, strategies, done):
                               state["split"], t, is_test)
     except Exception as exc:  # the whole state fails (e.g. degenerate split)
         return [], [{"state_id": state["state_id"], "error": repr(exc)}]
+    try:
+        eval_sets = fixed_test_set(state, cfg)
+    except Exception as exc:
+        return [], [{"state_id": state["state_id"], "error": f"fixed_test: {exc!r}"}]
     ep = cfg["endpoints"]
     costs = state.get("costs") or {}
     capacities = sorted(set(ep["capacities"]) | ({state["capacity"]} if state.get("capacity") else set()))
@@ -53,7 +85,8 @@ def _run_state(state, cfg, strategies, done):
                             b["n_init"], b["batch"], b["rounds"], cfg["data"]["test_fraction"],
                             start=start, split=state["split"], strategy_params=s["params"],
                             capacities=capacities, cost_fn=costs.get("cost_fn", ep["cost_fn"]),
-                            cost_fp=costs.get("cost_fp", ep["cost_fp"]), prepared=prepared)
+                            cost_fp=costs.get("cost_fp", ep["cost_fp"]), prepared=prepared,
+                            learner_seed_offset=s.get("learner_seed_offset", 0), eval_sets=eval_sets)
                     except Exception as exc:
                         errors.append({"state_id": state["state_id"], "learner": learner,
                                        "budget": bname, "start": start, "strategy": s["alias"],

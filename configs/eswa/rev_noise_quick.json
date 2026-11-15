@@ -1,0 +1,35 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Quick partial noise baseline (subset of rev_synthetic.json): three Margin replicates under RF and GBDT on the IR in {20, 50, 100} cells, where the tails live. ~6 core-hours.",
+  "results_dir": "results/revision_quick",
+  "n_jobs": 12,
+  "learners": [
+    "rf",
+    "gbdt"
+  ],
+  "strategies": [
+    "margin",
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep1",
+      "learner_seed_offset": 100003
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep2",
+      "learner_seed_offset": 200006
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep3",
+      "learner_seed_offset": 300009
+    }
+  ],
+  "synthetic_grid": {
+    "irs": [
+      20,
+      50,
+      100
+    ]
+  }
+}

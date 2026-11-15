@@ -30,7 +30,9 @@ DEFAULTS = {
 def _merge(base: dict, over: dict) -> dict:
     out = copy.deepcopy(base)
     for k, v in over.items():
-        if isinstance(v, dict) and isinstance(out.get(k), dict):
+        if isinstance(v, dict) and v.get("__replace__"):   # replace instead of merging
+            out[k] = {kk: copy.deepcopy(vv) for kk, vv in v.items() if kk != "__replace__"}
+        elif isinstance(v, dict) and isinstance(out.get(k), dict):
             out[k] = _merge(out[k], v)
         else:
             out[k] = copy.deepcopy(v)
@@ -51,10 +53,12 @@ def normalize_strategies(entries) -> list[dict]:
     out = []
     for e in entries:
         if isinstance(e, str):
-            out.append({"name": e, "alias": e, "params": {}})
+            out.append({"name": e, "alias": e, "params": {}, "learner_seed_offset": 0})
         else:
             out.append({"name": e["name"], "alias": e.get("alias", e["name"]),
-                        "params": e.get("params", {})})
+                        "params": e.get("params", {}),
+                        # revision: run-to-run noise replicates (0 = published behaviour)
+                        "learner_seed_offset": int(e.get("learner_seed_offset", 0))})
     aliases = [s["alias"] for s in out]
     if len(set(aliases)) != len(aliases):
         raise ValueError(f"Duplicate strategy aliases: {aliases}")

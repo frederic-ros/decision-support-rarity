@@ -11,6 +11,7 @@ from __future__ import annotations
 import time
 
 import numpy as np
+from sklearn.metrics import average_precision_score
 
 from rare_al.data.splits import initial_mask, make_split
 from rare_al.learners import make_learner
@@ -42,11 +43,21 @@ def fit_or_prior(learner, seed, X, y):
 def run_trajectory(X, y, strategy, learner, state_seed, method_seed, n_init, batch, rounds,
                    test_fraction=0.3, start="warm", split="stratified", t=None, is_test=None,
                    strategy_params=None, capacities=(0.01, 0.05), cost_fn=1.0, cost_fp=1.0,
-                   prepared=None):
+                   prepared=None, learner_seed_offset=0, eval_sets=None):
     """Return a list of per-round dict rows.
 
     ``prepared`` may carry a precomputed (Xtr, Xte, ytr, yte) to avoid re-splitting
     for every strategy of the same state.
+
+    Revision options (both default to the published behaviour):
+
+    * ``learner_seed_offset`` shifts the learner seed (``state_seed + round + offset``).
+      Used for the run-to-run noise baseline (Margin replicates); 0 reproduces the
+      published trajectories exactly.
+    * ``eval_sets`` maps a prefix to an additional, independent evaluation set
+      ``(X_eval, y_eval)`` already in the scaled feature space. The acquisition is
+      unchanged (it never sees any test set); AUPRC is additionally logged as
+      ``<prefix>_auprc``. Used for the fixed-number-of-test-positives analysis.
     """
     if prepared is None:
         prepared = make_split(X, y, state_seed, test_fraction, split, t, is_test)
@@ -56,13 +67,17 @@ def run_trajectory(X, y, strategy, learner, state_seed, method_seed, n_init, bat
     history = []
     for rnd in range(rounds + 1):
         t0 = time.perf_counter()
-        clf, is_prior = fit_or_prior(learner, state_seed + rnd, Xtr[labeled], ytr[labeled])
+        clf, is_prior = fit_or_prior(learner, state_seed + rnd + int(learner_seed_offset),
+                                     Xtr[labeled], ytr[labeled])
         fit_s = time.perf_counter() - t0
         p = positive_probability(clf, Xte)
         row = {"round": rnd, "n_labeled": int(labeled.sum()),
                "n_rare_labeled": int(np.sum(ytr[labeled] == 1)), "prior_model": int(is_prior),
-               "fit_s": fit_s}
+               "fit_s": fit_s, "n_test": int(len(yte)), "n_test_pos": int(np.sum(yte == 1))}
         row.update(round_metrics(yte, p, capacities, cost_fn, cost_fp))
+        for prefix, (Xe, ye) in (eval_sets or {}).items():
+            row[f"{prefix}_auprc"] = float(average_precision_score(ye, positive_probability(clf, Xe)))
+            row[f"{prefix}_n_pos"] = int(np.sum(ye == 1))
         if rnd == rounds:
             history.append(row)
             break

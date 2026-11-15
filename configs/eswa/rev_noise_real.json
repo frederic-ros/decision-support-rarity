@@ -1,0 +1,24 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Revision R3.1 on application data: three Margin replicates per real-data state (random tie-breaking + shifted learner seed), so that the validation and pilot analyses can charge the anchor its own run-to-run noise. ~40 core-hours. Run: rare-al run --config configs/eswa/rev_noise_real.json --only real",
+  "results_dir": "results/revision/noise_real",
+  "n_jobs": 12,
+  "strategies": [
+    "margin",
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep1",
+      "learner_seed_offset": 100003
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep2",
+      "learner_seed_offset": 200006
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep3",
+      "learner_seed_offset": 300009
+    }
+  ]
+}

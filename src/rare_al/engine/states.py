@@ -10,9 +10,16 @@ from rare_al.repro import stable_seed
 
 
 def synthetic_states(cfg, section="synthetic_grid", experiment="synthetic"):
-    """Controlled grid. Seeds are v1-identical for the v1 grid parameters."""
+    """Controlled grid. Seeds are v1-identical for the v1 grid parameters.
+
+    Revision options in the section: ``fixed_test`` ({"n_pos": 100}) attaches an
+    independent evaluation set with a fixed number of rare test cases (see
+    ``rare_al.engine.runner.fixed_test_set``); the state seeds -- hence data, split,
+    initial labels and every acquisition decision -- are unchanged.
+    """
     p = cfg[section]
     min_rare = p.get("min_rare", 20)
+    fixed_test = p.get("fixed_test")
     for regime in p["regimes"]:
         for ir in p["irs"]:
             for d in p["dims"]:
@@ -24,8 +31,18 @@ def synthetic_states(cfg, section="synthetic_grid", experiment="synthetic"):
                                "dataset": f"syn_{regime}", "domain": "synthetic",
                                "regime": regime, "ir": ir, "d": d, "sep": sep, "seed": s,
                                "n_samples": n, "min_rare": min_rare, "state_seed": seed,
-                               "split": "stratified",
+                               "split": "stratified", "fixed_test": fixed_test,
                                "state_id": f"{experiment}|{regime}|{ir}|{d}|{sep}|{s}"}
+
+
+def oracle_campaign_states(cfg, section="oracle", experiment="oraclecamp"):
+    """Full campaigns on the oracle states (revision, R2.6/R2.8/R3.4).
+
+    Same state seeds as the oracle (``synthetic_states(section="oracle")``), hence the
+    identical data, split and warm-start labeled set; the oracle states are rounds 1-4
+    of the Margin trajectory of these campaigns. Query-level (RQ3) and campaign-level
+    risk can therefore be compared on the same states and under the same learner."""
+    yield from synthetic_states(cfg, section=section, experiment=experiment)
 
 
 def rarity_states(cfg, section="rarity_stress", experiment="rarity"):

@@ -52,7 +52,9 @@ METADATA = {
     "least_confident": ("uncertainty", "v13", "Least confident", ""),
     "random": ("passive", "v13", "Random", ""),
     "robust_uncertainty": ("uncertainty", "v13", "Robust uncertainty", ""),
-    "committee": ("disagreement", "v13", "Committee (LR members)", "seung1992qbc"),
+    # revision (R2.5): LR committee members with an RF/GBDT downstream learner is a
+    # mismatched design -> cross-learner control, excluded from family conclusions
+    "committee": ("control", "v13", "Committee (LR members)", "seung1992qbc"),
     "committee_learner": ("disagreement", "new", "Committee (same learner)", "seung1992qbc"),
     "coreset": ("representativeness", "v13", "CoreSet", "sener2018coreset"),
     "kmeans_diversity": ("representativeness", "v13", "K-means diversity", "zhdanov2019diverse"),
@@ -83,6 +85,24 @@ def build(name: str, **params):
     if name in _CLASSES:
         return _CLASSES[name](**params)
     raise KeyError(f"Unknown strategy: {name}")
+
+
+# revision: role of each policy in the conclusions (R2.3, R2.5, R2.13)
+#   published -- a method from the literature (or random), basis of all main conclusions
+#   control   -- reference variants / mismatched design, never used for family conclusions
+#   instance  -- the framework instance (RCA)
+#   probe     -- internal diagnostic variant (appendix only)
+ROLE = {**{k: "published" for k in METADATA},
+        "margin": "reference", "entropy": "control", "least_confident": "control",
+        "margin_rtb": "control", "committee": "control", "robust_uncertainty": "control",
+        "rca": "instance", "constrained_cover": "probe", "rareguard": "probe",
+        "adaptive_repulsion": "probe"}
+
+
+def role(name: str) -> str:
+    if name.startswith("margin_rep"):
+        return "noise_replicate"
+    return ROLE.get(name, "other")
 
 
 def family(name: str) -> str:

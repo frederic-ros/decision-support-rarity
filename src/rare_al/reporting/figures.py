@@ -16,7 +16,7 @@ plt.rcParams.update({"font.size": 9, "axes.spines.top": False, "axes.spines.righ
 FAMILY_COLOR = {"reference": "#444444", "uncertainty": "#777777", "passive": "#999999",
                 "disagreement": "#8c564b", "representativeness": "#1f77b4", "hybrid": "#17becf",
                 "rare_targeted": "#d62728", "active_search": "#ff7f0e", "adaptive": "#2ca02c",
-                "framework_instance": "#9467bd", "probe": "#bcbd22"}
+                "framework_instance": "#9467bd", "probe": "#bcbd22", "control": "#bbbbbb"}
 
 
 def _save(fig, path):

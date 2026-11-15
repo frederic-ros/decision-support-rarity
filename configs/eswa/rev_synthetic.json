@@ -1,0 +1,65 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Revision R3.1 + R3.3: full synthetic grid re-run with (i) five Margin replicates per state (random tie-breaking + shifted learner seed) as the run-to-run noise baseline and (ii) an independent evaluation set with 100 rare cases at the state's realized IR. Acquisition decisions are identical to the published campaign (same seeds); auprc on the original test set reproduces results/campaign/synthetic exactly. Cost ~130 core-hours. Run: rare-al run --config configs/eswa/rev_synthetic.json --only synthetic",
+  "results_dir": "results/revision",
+  "n_jobs": 12,
+  "strategies": [
+    "margin",
+    "margin_rtb",
+    "entropy",
+    "least_confident",
+    "random",
+    "robust_uncertainty",
+    "committee",
+    "committee_learner",
+    "coreset",
+    "kmeans_diversity",
+    "typiclust",
+    "probcover",
+    "uherding",
+    "dcf",
+    "constrained_cover",
+    "rareguard",
+    "adaptive_repulsion",
+    "most_likely_positive",
+    "ens",
+    "class_balanced",
+    "anchoral",
+    "similar_flqmi",
+    "galaxy",
+    "direct",
+    "tailor",
+    "albl",
+    "rca",
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep1",
+      "learner_seed_offset": 100003
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep2",
+      "learner_seed_offset": 200006
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep3",
+      "learner_seed_offset": 300009
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep4",
+      "learner_seed_offset": 400012
+    },
+    {
+      "name": "margin_rtb",
+      "alias": "margin_rep5",
+      "learner_seed_offset": 500015
+    }
+  ],
+  "synthetic_grid": {
+    "fixed_test": {
+      "n_pos": 100
+    }
+  }
+}
