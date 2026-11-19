@@ -1,0 +1,26 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Revision (LR intercept): threshold diagnostics (share of the pool scored >= 0.5, pool prevalence, rare-case lift of each batch) for the published learners and the mechanism control logreg_iscale100 (liblinear, intercept penalty divided by 10^4). Margin/Random/DIRECT only. logreg trajectories reproduce results/campaign exactly. Cost ~25 core-hours. Run: rare-al run --config configs/eswa/rev_threshold.json --only real image synthetic",
+  "results_dir": "results/revision/threshold",
+  "n_jobs": 12,
+  "learners": [
+    "logreg",
+    "logreg_iscale100",
+    "rf",
+    "gbdt"
+  ],
+  "log_threshold_diagnostics": true,
+  "strategies": [
+    "margin",
+    "random",
+    "direct"
+  ],
+  "synthetic_grid": {
+    "irs": [
+      20,
+      50,
+      100
+    ],
+    "seeds": 5
+  }
+}

@@ -15,6 +15,13 @@ support the ESWA design:
 * ``rf_leaf5`` / ``gbdt_leaf5`` -- revision sensitivity (R2.4, R1.3): coarser leaves.
 * ``rf_trees50``      -- revision sensitivity: fewer trees (coarser probability grid).
 * ``tabpfn``          -- optional tabular foundation model (if installed).
+* ``logreg_lbfgs``    -- revision: the published ``logreg`` (liblinear) L2-penalizes the
+                         intercept like any other weight (intercept_scaling=1); with a
+                         few dozen labels the intercept stays near zero and the 0.5
+                         threshold falls inside the majority mass. ``logreg_lbfgs`` is the
+                         same model (L2, C=1, class-balanced) with an unpenalized intercept.
+* ``logreg_iscale100`` -- mechanism control: liblinear with intercept_scaling=100, i.e.
+                         the intercept penalty divided by 10^4 with the solver unchanged.
 """
 from __future__ import annotations
 
@@ -23,8 +30,24 @@ from sklearn.linear_model import LogisticRegression
 
 
 def _logreg(seed, weighted=True):
+    # Published configuration. NOTE: with the liblinear solver the intercept is L2-penalized
+    # like any other weight (intercept_scaling=1); with few labels it stays near zero.
     return LogisticRegression(max_iter=1500, class_weight="balanced" if weighted else None,
                               solver="liblinear", random_state=seed)
+
+
+def _logreg_lbfgs(seed, weighted=True):
+    """Same model (L2, C=1, class-balanced) with an unpenalized intercept (lbfgs solver).
+    Revision: robustness of every logistic-regression result to intercept regularization."""
+    return LogisticRegression(max_iter=1500, class_weight="balanced" if weighted else None,
+                              solver="lbfgs", C=1.0, random_state=seed)
+
+
+def _logreg_iscale(seed, scale=100.0, weighted=True):
+    """liblinear with a (nearly) unpenalized intercept: isolates the intercept penalty
+    from the choice of solver."""
+    return LogisticRegression(max_iter=1500, class_weight="balanced" if weighted else None,
+                              solver="liblinear", intercept_scaling=scale, random_state=seed)
 
 
 def _rf(seed, weighted=True, bootstrap=True, n_estimators=200, min_samples_leaf=2):
@@ -61,6 +84,9 @@ def _tabpfn(seed):
 LEARNERS = {
     "logreg": lambda s: _logreg(s),
     "logreg_unweighted": lambda s: _logreg(s, weighted=False),
+    "logreg_lbfgs": lambda s: _logreg_lbfgs(s),
+    "logreg_lbfgs_unweighted": lambda s: _logreg_lbfgs(s, weighted=False),
+    "logreg_iscale100": lambda s: _logreg_iscale(s),
     "rf": lambda s: _rf(s),
     "rf_unweighted": lambda s: _rf(s, weighted=False),
     "rf_nobootstrap": lambda s: _rf(s, bootstrap=False),
@@ -76,7 +102,8 @@ LEARNERS = {
 }
 
 LEARNER_FAMILY = {
-    "logreg": "linear", "logreg_unweighted": "linear",
+    "logreg": "linear", "logreg_unweighted": "linear", "logreg_lbfgs": "linear",
+    "logreg_lbfgs_unweighted": "linear", "logreg_iscale100": "linear",
     "rf": "bagged_trees", "rf_unweighted": "bagged_trees", "rf_nobootstrap": "bagged_trees",
     "rf_leaf1_500": "bagged_trees", "rf_leaf5": "bagged_trees", "rf_trees50": "bagged_trees",
     "gbdt": "boosted_trees", "gbdt_leaf5": "boosted_trees", "gbdt_unweighted": "boosted_trees", "lightgbm": "boosted_trees",

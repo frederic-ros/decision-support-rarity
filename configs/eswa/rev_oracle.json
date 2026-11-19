@@ -1,15 +1,23 @@
 {
   "extends": "campaign.json",
-  "_comment": "Revision R2.6, R2.8, R3.4: discovery oracle under LR, RF and GBDT on twice as many base states (seeds 0-5; 288 base states x 4 rounds), sharded over n_jobs processes, plus full campaigns on the same states (all strategies, all learners). Copy results/campaign/oracle/*.csv into results/revision/oracle/ first to reuse the published LR states. Run: rare-al run --config configs/eswa/rev_oracle.json --only oracle oracle_campaign",
+  "_comment": "Revision R2.6, R2.8, R3.4 + LR intercept: discovery oracle under LR with a penalized (logreg, published) and an unpenalized intercept (logreg_lbfgs), RF and GBDT, on 288 base states (seeds 0-5) x 4 rounds, sharded; plus full campaigns on the same states (all strategies, all learners). Copy results/campaign/oracle/*.csv (and the merged seeds 3-5 LR files) into results/revision/oracle/ first: finished (learner, state, round) triples are skipped. Run: rare-al run --config configs/eswa/rev_oracle.json --only oracle oracle_campaign The observability analysis (--only observability, Table S-c5) uses oracle.classifier = logreg_lbfgs.",
   "results_dir": "results/revision",
   "n_jobs": 12,
   "oracle": {
     "learners": [
+      "logreg_lbfgs",
       "logreg",
       "rf",
       "gbdt"
     ],
     "seeds": 6,
-    "n_jobs": 12
-  }
+    "n_jobs": 12,
+    "classifier": "logreg_lbfgs"
+  },
+  "learners": [
+    "logreg",
+    "logreg_lbfgs",
+    "rf",
+    "gbdt"
+  ]
 }

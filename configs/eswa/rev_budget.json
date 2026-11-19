@@ -1,6 +1,6 @@
 {
   "extends": "campaign.json",
-  "_comment": "Revision (R3, budget claim): matched low-budget comparison. One trajectory with n_init=10 and batch=4 gives both 26 labels (round 4) and 94 labels (round 21), so the initial set and batch size are held fixed and only the budget varies. Matched subset of the earlier analysis. Run: rare-al run --config configs/eswa/rev_budget.json --only synthetic",
+  "_comment": "Revision (R3, budget claim): matched low-budget comparison. One trajectory with n_init=10 and batch=4 gives both 26 labels (round 4) and 94 labels (round 21), so the initial set and batch size are held fixed and only the budget varies. Matched subset of the earlier analysis. Run: rare-al run --config configs/eswa/rev_budget.json --only synthetic Includes logreg_lbfgs (unpenalized LR intercept), on which guideline G3 now rests.",
   "results_dir": "results/revision/budget",
   "n_jobs": 12,
   "budgets": {
@@ -31,5 +31,11 @@
     "seps": [
       2.0
     ]
-  }
+  },
+  "learners": [
+    "logreg_lbfgs",
+    "logreg",
+    "rf",
+    "gbdt"
+  ]
 }

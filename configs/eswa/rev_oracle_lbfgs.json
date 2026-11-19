@@ -1,0 +1,6 @@
+{
+  "extends": "rev_oracle.json",
+  "_comment": "Revision (LR intercept), first step of rev_oracle: discovery oracle (288 base states x 4 rounds) and full campaigns on the same states with the unpenalized-intercept LR only (~1-2 h on 12 workers). RF and GBDT follow with rev_oracle.json (finished triples are skipped). Run: rare-al run --config configs/eswa/rev_oracle_lbfgs.json --only oracle oracle_campaign observability",
+  "learners": ["logreg_lbfgs"],
+  "oracle": {"learners": ["logreg_lbfgs"], "classifier": "logreg_lbfgs"}
+}

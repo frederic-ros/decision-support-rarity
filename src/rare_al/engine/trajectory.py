@@ -43,7 +43,7 @@ def fit_or_prior(learner, seed, X, y):
 def run_trajectory(X, y, strategy, learner, state_seed, method_seed, n_init, batch, rounds,
                    test_fraction=0.3, start="warm", split="stratified", t=None, is_test=None,
                    strategy_params=None, capacities=(0.01, 0.05), cost_fn=1.0, cost_fp=1.0,
-                   prepared=None, learner_seed_offset=0, eval_sets=None):
+                   prepared=None, learner_seed_offset=0, eval_sets=None, log_threshold=False):
     """Return a list of per-round dict rows.
 
     ``prepared`` may carry a precomputed (Xtr, Xte, ytr, yte) to avoid re-splitting
@@ -58,6 +58,10 @@ def run_trajectory(X, y, strategy, learner, state_seed, method_seed, n_init, bat
       ``(X_eval, y_eval)`` already in the scaled feature space. The acquisition is
       unchanged (it never sees any test set); AUPRC is additionally logged as
       ``<prefix>_auprc``. Used for the fixed-number-of-test-positives analysis.
+    * ``log_threshold`` logs, before each selection, the share of the unlabeled pool scored
+      at or above 0.5 (``pool_share_p05``) and the pool prevalence (``pool_prev``), so that
+      the rare-case yield of a query batch can be expressed as a lift over random sampling
+      (``batch_rare / (batch * pool_prev)``). The pool scores are reused by the strategy.
     """
     if prepared is None:
         prepared = make_split(X, y, state_seed, test_fraction, split, t, is_test)
@@ -86,6 +90,10 @@ def run_trajectory(X, y, strategy, learner, state_seed, method_seed, n_init, bat
         ctx = Context(clf=clf, learner=learner, Xpool=Xtr[pool], Xl=Xtr[labeled], yl=ytr[labeled],
                       batch=min(batch, len(pool)), rng=rng, round=rnd,
                       budget_remaining=(rounds - rnd) * batch, pool_ids=pool)
+        if log_threshold:
+            pp = ctx.p_pool                      # cached: the strategy reuses these scores
+            row["pool_share_p05"] = float(np.mean(pp >= 0.5))
+            row["pool_prev"] = float(np.mean(ytr[pool] == 1))
         t0 = time.perf_counter()
         local = np.asarray(strat.select(ctx), int)
         row["select_s"] = time.perf_counter() - t0

@@ -1,0 +1,5 @@
+{
+  "extends": "rev_synthetic.json",
+  "_comment": "Revision analyses with LR = logreg_lbfgs. results/revision_lbfgs is built by rare-al swap-learner from results/revision (rev_synthetic, rev_noise_real, rev_oracle, rev_budget, rev_sensitivity) and results/revision/lbfgs, keeping the Margin replicates; see REVISION_ESWA.md. Run: rare-al revision-report --config configs/eswa/rev_report_lbfgs.json --campaign results/campaign_lbfgs --out results/revision_lbfgs/assets",
+  "results_dir": "results/revision_lbfgs"
+}

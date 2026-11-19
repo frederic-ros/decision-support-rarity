@@ -1,6 +1,6 @@
 {
   "extends": "campaign.json",
-  "_comment": "Revision R2.4, R1.3: learner-setting sensitivity (leaf size, number of trees, finer probability grid, no class weighting) for a representative strategy set, on the real benchmark (5 seeds) and the high-rarity synthetic cells. Run: rare-al run --config configs/eswa/rev_sensitivity.json --only real synthetic",
+  "_comment": "Revision R2.4, R1.3: learner-setting sensitivity (leaf size, number of trees, finer probability grid, no class weighting; LR with an unpenalized intercept, unweighted, and the liblinear intercept-scaling control) for a representative strategy set, on the real benchmark (5 seeds) and the high-rarity synthetic cells. Run: rare-al run --config configs/eswa/rev_sensitivity.json --only real synthetic",
   "results_dir": "results/revision/sensitivity",
   "n_jobs": 12,
   "learners": [
@@ -10,7 +10,9 @@
     "rf_unweighted",
     "gbdt_leaf5",
     "gbdt_unweighted",
-    "logreg_unweighted"
+    "logreg_unweighted",
+    "logreg_lbfgs_unweighted",
+    "logreg_iscale100"
   ],
   "strategies": [
     "margin",

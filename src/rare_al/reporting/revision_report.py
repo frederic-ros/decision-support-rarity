@@ -26,7 +26,8 @@ from rare_al.analysis.load import load_trajectories
 from rare_al.analysis.paired import final_rows, paired
 from rare_al.strategies.registry import display
 
-LEARNER_NAME = {"logreg": "LR", "rf": "RF", "gbdt": "GBDT"}
+# "logreg" is the liblinear LR in results/campaign and the lbfgs LR in a swap-learner tree
+LEARNER_NAME = {"logreg": "LR", "logreg_lbfgs": "LR (lbfgs)", "rf": "RF", "gbdt": "GBDT"}
 EXTRA = ["fx_auprc", "auprc", "n_rare_labeled", "recall"]
 
 
@@ -345,6 +346,73 @@ class RevisionBuilder:
         else:
             self._log("matched budget", "missing", "run configs/eswa/rev_budget.json")
 
+    # ------------------------------------------------ revision: LR intercept regularization
+    INTERCEPT_ROWS = ["direct", "most_likely_positive", "class_balanced", "galaxy", "tailor", "rca",
+                      "kmeans_diversity", "coreset", "random"]
+
+    def intercept(self):
+        """liblinear (penalized intercept, published) vs. lbfgs (unpenalized intercept) on the
+        same states: per-strategy gains vs. Margin, Margin's noise floor under lbfgs, and the
+        threshold diagnostics (share of pool >= 0.5, rare-case lift of the queries)."""
+        found, eff_all = False, []
+        for sub, unit in (("real", "dataset"), ("image", "dataset"), ("synthetic", "state_id"),
+                          ("rarity", "state_id")):
+            path, base = self._find(self.revision, f"lbfgs/{sub}"), self._find(self.campaign, sub)
+            if not (path and base):
+                continue
+            found = True
+            dv, _, pv = self._paired(path)
+            _, _, pb = self._paired(base)
+            pv = pv[pv.learner == "logreg_lbfgs"]
+            pb = pb[(pb.learner == "logreg") & pb.state_id.isin(set(pv.state_id))]
+            reps = pv.strategy.astype(str).str.startswith("margin_rep")
+            eff = R.intercept_effect(pb, pv[~reps], unit=unit,
+                                     cluster_fn=R.source_group if sub == "real" else None,
+                                     n_boot=self.n_boot)
+            eff.insert(0, "benchmark", sub)
+            eff_all.append(eff)
+            self._stat(f"rev_intercept_{sub}.csv", eff)
+            if reps.any():
+                self._stat(f"rev_noise_floor_lbfgs_{sub}.csv", R.noise_floor(pv, n_boot=self.n_boot))
+                self._stat(f"rev_excess_tail_lbfgs_{sub}.csv", R.excess_tail(pv, n_boot=self.n_boot))
+            self._stat(f"rev_threshold_lbfgs_{sub}.csv", R.threshold_diagnostics(dv))
+            d = eff[eff.strategy == "direct"].set_index("solver")
+            note = ", ".join(f"{k}: DIRECT-Margin {_fmt(r.gain)} [{_fmt(r.gain_ci_low)}, {_fmt(r.gain_ci_high)}]"
+                             for k, r in d.iterrows())
+            self._log(f"LR intercept ({sub})", path, note)
+        thr = []
+        for sub in ("real", "image", "synthetic"):
+            path = self._find(self.revision, f"threshold/{sub}")
+            if path:
+                t = R.threshold_diagnostics(load_trajectories(path))
+                t.insert(0, "benchmark", sub)
+                thr.append(t)
+        if thr:
+            self._stat("rev_threshold_diagnostics.csv", pd.concat(thr, ignore_index=True))
+            self._log("threshold diagnostics", self.revision / "threshold", "")
+        if not found:
+            self._log("LR intercept", "missing", "run configs/eswa/rev_lbfgs.json")
+            return
+        eff = pd.concat(eff_all, ignore_index=True)
+        benches = [b for b in ("real", "image", "synthetic") if b in set(eff.benchmark)]
+        rows = []
+        for s in [x for x in self.INTERCEPT_ROWS if x in set(eff.strategy)]:
+            row = [display(s)]
+            for b in benches:
+                for solver in ("liblinear", "lbfgs"):
+                    r = eff[(eff.benchmark == b) & (eff.strategy == s) & (eff.solver == solver)]
+                    row.append(_ci(r.gain.iloc[0], r.gain_ci_low.iloc[0], r.gain_ci_high.iloc[0])
+                               if len(r) else "--")
+            rows.append(row)
+        row = ["Margin final AUPRC"]
+        for b in benches:
+            for solver in ("liblinear", "lbfgs"):
+                r = eff[(eff.benchmark == b) & (eff.solver == solver)]
+                row.append(_fmt(r.margin_auprc_all.iloc[0], 3, False) if len(r) else "--")
+        rows.append(row)
+        header = ["Strategy"] + [f"{b} ({sv})" for b in benches for sv in ("liblinear", "lbfgs")]
+        self._tex("tab_intercept.tex", _tabular(header, rows, "l" + "c" * (len(header) - 1)))
+
     def sensitivity(self):
         found = False
         for sub in ("real", "synthetic"):
@@ -355,6 +423,11 @@ class RevisionBuilder:
             found = True
             _, _, pv = self._paired(path)
             _, _, pb = self._paired(base)
+            lb = self._find(self.revision, f"lbfgs/{sub}")       # base of the LR-intercept variants
+            if lb is not None:
+                _, _, pl = self._paired(lb)
+                pl = pl[(pl.learner == "logreg_lbfgs") & ~pl.strategy.astype(str).str.startswith("margin_rep")]
+                pb = pd.concat([pb, pl], ignore_index=True)
             unit = "dataset" if sub == "real" else "state_id"
             pb = pb[pb.state_id.isin(set(pv.state_id))]
             rows, conc = R.sensitivity_summary(pv, pb, unit=unit)
@@ -406,7 +479,7 @@ def build_revision(cfg, campaign, revision, out, cache_dir=None, n_boot=2000):
     for name, fn in [("sample_size", b.sample_size), ("synthetic_noise", b.synthetic_noise),
                      ("campaign_synthetic", b.campaign_synthetic), ("image", b.image), ("oracle", b.oracle),
                      ("real", b.real),
-                     ("budget", b.budget), ("sensitivity", b.sensitivity)]:
+                     ("budget", b.budget), ("sensitivity", b.sensitivity), ("intercept", b.intercept)]:
         try:
             fn()
         except Exception as exc:  # fault tolerant, like rare-al analyze

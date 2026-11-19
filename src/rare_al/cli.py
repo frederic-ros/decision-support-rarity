@@ -198,6 +198,18 @@ def cmd_revision_report(args):
     print(f"[revision-report] {len(rep)} sections -> {out}", flush=True)
 
 
+def cmd_swap_learner(args):
+    """Revision (LR intercept): results tree with logreg (liblinear) replaced by logreg_lbfgs,
+    so that `rare-al analyze` rebuilds every main table with the corrected linear learner."""
+    from rare_al.tools.swap_learner import swap_learner
+    log = swap_learner(args.base, args.add, args.out, drop=args.drop, learner=args.learner,
+                       sections=args.sections, keep_replicates=args.keep_replicates,
+                       require_complete=not args.allow_partial, clean=not args.no_clean,
+                       keep_extra_states=args.keep_extra_states)
+    for r in log:
+        print(f"[swap-learner] {r}", flush=True)
+
+
 def cmd_analyze(args):
     cfg = load_config(args.config)
     from rare_al.reporting.assets import build_all
@@ -249,6 +261,23 @@ def build_parser():
     p.add_argument("--out", default=None)
     p.add_argument("--n-boot", dest="n_boot", type=int, default=2000)
     p.set_defaults(func=cmd_revision_report)
+
+    p = sub.add_parser("swap-learner", help="results tree with one learner replaced by another (revision)")
+    p.add_argument("--base", default="results/campaign")
+    p.add_argument("--add", default="results/revision/lbfgs")
+    p.add_argument("--out", default="results/campaign_lbfgs")
+    p.add_argument("--drop", default="logreg")
+    p.add_argument("--learner", default="logreg_lbfgs")
+    p.add_argument("--sections", nargs="+",
+                   default=["synthetic", "rarity", "real", "image", "oracle", "oracle_campaign"],
+                   help="sub-directories; 'base_sub:add_sub' when they differ (e.g. noise_real/real:real)")
+    p.add_argument("--keep-replicates", dest="keep_replicates", action="store_true")
+    p.add_argument("--allow-partial", dest="allow_partial", action="store_true")
+    p.add_argument("--keep-extra-states", dest="keep_extra_states", action="store_true",
+                   help="keep states of --add that --base lacks (default: drop them)")
+    p.add_argument("--no-clean", dest="no_clean", action="store_true",
+                   help="add to an existing --out instead of rebuilding it")
+    p.set_defaults(func=cmd_swap_learner)
 
     p = sub.add_parser("validate-guidelines",
                        help="leave-one-domain-out out-of-sample validation of the decision procedure")

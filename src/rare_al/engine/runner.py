@@ -86,7 +86,8 @@ def _run_state(state, cfg, strategies, done):
                             start=start, split=state["split"], strategy_params=s["params"],
                             capacities=capacities, cost_fn=costs.get("cost_fn", ep["cost_fn"]),
                             cost_fp=costs.get("cost_fp", ep["cost_fp"]), prepared=prepared,
-                            learner_seed_offset=s.get("learner_seed_offset", 0), eval_sets=eval_sets)
+                            learner_seed_offset=s.get("learner_seed_offset", 0), eval_sets=eval_sets,
+                            log_threshold=bool(cfg.get("log_threshold_diagnostics", False)))
                     except Exception as exc:
                         errors.append({"state_id": state["state_id"], "learner": learner,
                                        "budget": bname, "start": start, "strategy": s["alias"],

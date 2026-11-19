@@ -597,8 +597,8 @@ def pilot_simulation(p: pd.DataFrame, n_pilot=(2, 3, 5), tau=TAU, reference="mar
     labeled historical sample (the pilot); the remaining seeds are the deployment it must
     predict. Rules: ``pilot_mean`` (best pilot mean, Margin included at 0), ``pilot_screen``
     (same, after removing every strategy with at least one material loss in the pilot),
-    ``guideline`` (no pilot: the learner-conditional default, e.g. DIRECT under LR and
-    Margin under trees), and ``hindsight`` (best mean on the held-out seeds, upper ref.).
+    ``guideline`` (no pilot: the default of the guidelines, Margin under every learner unless
+    a ``guideline`` mapping learner -> strategy is given), and ``hindsight`` (best mean on the held-out seeds, upper ref.).
     ``pilot_shortlist`` follows Algorithm 2 more closely: the pilot only arbitrates between
     the anchor and the ``shortlist_size`` best strategies of the *other* datasets for this
     learner (the guideline-admissible candidates), instead of searching all candidates.
@@ -609,7 +609,8 @@ def pilot_simulation(p: pd.DataFrame, n_pilot=(2, 3, 5), tau=TAU, reference="mar
              & ~p.strategy.astype(str).str.startswith(REP_PREFIX)]
     if candidates is not None:
         elig = elig[elig.strategy.isin(set(candidates) | {reference})]
-    guideline = guideline or {"logreg": "direct", "rf": reference, "gbdt": reference}
+    # revised guideline (G7): the anchor under every learner once the LR intercept is unpenalized
+    guideline = guideline or {}
     rng = np.random.default_rng(seed)
     rows = []
     unit_means = elig.groupby(["learner", "dataset", "strategy"]).delta.mean()
@@ -684,7 +685,8 @@ def budget_at_rounds(traj: pd.DataFrame, rounds, reference="margin", strategies=
 # ------------------------------------------------------ R2.4 / R1.3 learner settings
 BASE_OF = {"rf_leaf1_500": "rf", "rf_leaf5": "rf", "rf_trees50": "rf", "rf_unweighted": "rf",
            "rf_nobootstrap": "rf", "gbdt_leaf5": "gbdt", "gbdt_unweighted": "gbdt",
-           "logreg_unweighted": "logreg"}
+           "logreg_unweighted": "logreg", "logreg_lbfgs_unweighted": "logreg_lbfgs",
+           "logreg_iscale100": "logreg_lbfgs"}
 
 
 def sensitivity_summary(p_var: pd.DataFrame, p_base: pd.DataFrame, unit="dataset", tau=TAU):
@@ -714,3 +716,58 @@ def sensitivity_summary(p_var: pd.DataFrame, p_base: pd.DataFrame, unit="dataset
                          "n_beating_margin_variant": int((a[common] > 0.005).sum()),
                          "n_beating_margin_base": int((b[common] > 0.005).sum())})
     return pd.DataFrame(rows), pd.DataFrame(conc)
+
+
+# ------------------------------------------- intercept regularization of the LR learner
+def intercept_effect(p_lib: pd.DataFrame, p_lbfgs: pd.DataFrame, unit="dataset", cluster_fn=None,
+                     n_boot=2000, reference="margin"):
+    """Same states, same strategies, LR with a penalized (liblinear) vs. unpenalized (lbfgs)
+    intercept. Per strategy, on the units observed under both solvers: unit-level mean paired
+    gain vs. Margin under each solver, with cluster-bootstrap intervals (sources when
+    ``cluster_fn`` is given), share of units with a positive gain, and mean final AUPRC of the
+    strategy and of Margin. ``margin_auprc_all`` is Margin's mean AUPRC over all common units."""
+    um = {}
+    for tag, p in (("liblinear", p_lib), ("lbfgs", p_lbfgs)):
+        um[tag] = p.groupby(["strategy", unit]).agg(delta=("delta", "mean"), auprc=("auprc", "mean"),
+                                                    ref=("ref_auprc", "mean")).reset_index()
+    all_units = set(um["liblinear"][unit]) & set(um["lbfgs"][unit])
+    rows = []
+    for s in sorted(set(um["liblinear"].strategy) & set(um["lbfgs"].strategy)):
+        if s == reference:
+            continue
+        units = (set(um["liblinear"].loc[um["liblinear"].strategy == s, unit])
+                 & set(um["lbfgs"].loc[um["lbfgs"].strategy == s, unit]))
+        for tag in ("liblinear", "lbfgs"):
+            u = um[tag]
+            g = u[(u.strategy == s) & u[unit].isin(units)]
+            ref_all = u[u[unit].isin(all_units)].groupby(unit).ref.first().mean()
+            cl = g[unit].map(cluster_fn) if cluster_fn else g[unit]
+            m, lo, hi = cluster_boot(g.delta.to_numpy(), cl.to_numpy(), n=n_boot, seed=121)
+            rows.append({"solver": tag, "strategy": s, "n_units": len(g), "gain": m, "gain_ci_low": lo,
+                         "gain_ci_high": hi, "share_positive": float((g.delta > 0).mean()),
+                         "auprc": float(g.auprc.mean()), "margin_auprc": float(g.ref.mean()),
+                         "margin_auprc_all": float(ref_all)})
+    return pd.DataFrame(rows)
+
+
+def threshold_diagnostics(traj: pd.DataFrame, strategies=("margin", "random", "direct"), batch=8):
+    """Where the 0.5 threshold falls and what each strategy's queries yield (needs a run with
+    ``log_threshold_diagnostics``). Per state: mean share of the pool scored >= 0.5, mean pool
+    prevalence, and the rare-case lift of the queried batches over random sampling
+    (rare cases queried / expected under random sampling). Summarised by learner x strategy
+    (medians over states)."""
+    d = traj[traj.strategy.isin(strategies)].copy()
+    d = d[d.pool_prev.notna()] if "pool_prev" in d else d.iloc[0:0]
+    if d.empty:
+        return pd.DataFrame()
+    d["expected"] = d.pool_prev * batch
+    s = d.groupby(["state_id", "learner", "strategy"]).agg(
+        share_p05=("pool_share_p05", "mean"), pool_prev=("pool_prev", "mean"),
+        rare=("batch_rare", "sum"), expected=("expected", "sum")).reset_index()
+    s["lift"] = s.rare / s.expected.clip(lower=1e-12)
+    s["share_over_prev"] = s.share_p05 / s.pool_prev.clip(lower=1e-12)
+    return s.groupby(["learner", "strategy"]).agg(
+        n_states=("state_id", "nunique"), share_p05=("share_p05", "median"),
+        pool_prev=("pool_prev", "median"), share_over_prev=("share_over_prev", "median"),
+        lift_median=("lift", "median"), lift_q25=("lift", lambda x: x.quantile(0.25)),
+        lift_q75=("lift", lambda x: x.quantile(0.75))).reset_index()

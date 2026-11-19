@@ -1,0 +1,5 @@
+{
+  "extends": "campaign.json",
+  "_comment": "Analysis of results/campaign_lbfgs (rare-al swap-learner): published RF/GBDT results with the LR rows replaced by logreg_lbfgs (unpenalized intercept). Run: rare-al analyze --config configs/eswa/campaign_lbfgs.json",
+  "results_dir": "results/campaign_lbfgs"
+}
