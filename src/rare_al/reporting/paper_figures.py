@@ -372,17 +372,24 @@ def fig_headline(rp, path, xmin=-0.05, ymin=0.06, ymax=45):
         # labels: off-scale and far-left points to the right of the point; near-neutral ones stacked on the left
         far = d[d.strategy.isin(lab[lr]) & (d["mean"] < -0.015)]
         for r in far.itertuples():
-            txt = f"{short(r.strategy)} ({r.mean:+.3f})" if r.off else short(r.strategy)
+            txt = f"{short(r.strategy)} ({r.mean:+.3f})".replace("-", "\u2212") if r.off else short(r.strategy)
             ax.annotate(txt, (r.xp, r.yp), (r.xp + 0.004, r.yp * (0.55 if r.yp > 20 else 1.9)), fontsize=6.5,
                         color=INK, va="center",
                         arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.4, shrinkA=1, shrinkB=2))
-        nn = d[d.strategy.isin(lab[lr]) & (d["mean"] >= -0.015)].sort_values("yp")
+        nn = d[d.strategy.isin(lab[lr]) & (d["mean"] >= -0.015)].sort_values("yp", ascending=False)
         if len(nn):
-            ly = np.exp(_repel(np.log(nn.yp.to_numpy()), 0.30))
-            for (r, y) in zip(nn.itertuples(), ly):
+            # near-neutral labels go to the free area at the left, below every point lying left of the band,
+            # stacked downwards in the order of their points (no label over a data point or a leader line)
+            left = d[(d.xp < -0.0055) & (d.xp > -0.03)]
+            top = float(left.yp.min()) / 1.35 if len(left) else ymax / 2
+            ys, prev = [], None
+            for r in nn.itertuples():
+                y = min(r.yp, top) if prev is None else min(r.yp, prev / 1.55)
+                ys.append(max(y, ymin * 2.2))
+                prev = ys[-1]
+            for (r, y) in zip(nn.itertuples(), ys):
                 ax.annotate(short(r.strategy), (r.xp, r.yp), (-0.0125, y), fontsize=6.5, color=INK, ha="right",
-                            va="center", bbox=dict(boxstyle="square,pad=0.05", fc="white", ec="none", alpha=0.85),
-                            arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.4, shrinkA=1, shrinkB=2))
+                            va="center", arrowprops=dict(arrowstyle="-", color=MUTED, lw=0.4, shrinkA=1, shrinkB=2))
         nd = d[d["mean"].abs() < 0.0055]
         ttl = {"logreg": "LR", "rf": "Random forest", "gbdt": "Gradient-boosted trees"}[lr]
         ax.set_title(f"{ttl}\nnear-neutral: {nd.C.min():.1f}\u2013{nd.C.max():.1f}%", loc="left",
