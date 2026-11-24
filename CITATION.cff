@@ -8,11 +8,12 @@ abstract: >-
   profile (lower quantile and material-loss probability), a non-maximized
   discovery oracle with an exploitability ratio, and evidence-graded guidelines,
   evaluated over 27 acquisition strategies, three downstream learners, a
-  synthetic grid, 42 real tabular datasets with preserved rarity, and 17 image
-  tasks on two frozen embeddings.
+  synthetic grid, 42 real tabular datasets with preserved rarity, and 22 image
+  tasks from 15 datasets on two frozen embeddings, with the run-to-run noise floor of the
+  reference, out-of-sample validation of the selection rules and a learner-configuration study.
 type: software
-version: 2.0.0
-doi: "10.5281/zenodo.23292060"
+version: 2.1.0
+doi: "10.5281/zenodo.23292060"  # v2.0.0; replace by the v2.1.0 version DOI once minted
 license: MIT
 repository-code: "https://github.com/frederic-ros/decision-support-rarity"
 url: "https://github.com/frederic-ros/decision-support-rarity"

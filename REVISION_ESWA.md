@@ -122,3 +122,37 @@ rare-al validate-guidelines --config configs/eswa/campaign_lbfgs.json
 Budget and sensitivity sections of the second report read `results/revision_lbfgs/{budget,sensitivity}`;
 copy them from `results/revision` (their LR rows are liblinear: read them as such, or rerun
 `rev_budget.json` / `rev_sensitivity.json` with `"learners": ["logreg_lbfgs", ...]`).
+
+
+## Figures of the revised manuscript (`rare-al paper-figures`)
+
+All figures of the revised manuscript and supplement are drawn at the printed text width (5.4 in) by one
+command, which first writes the small CSV files they are drawn from (`<out>/figure_data/`) and then the PDFs:
+
+```bash
+rare-al paper-figures --campaign results/campaign --lbfgs results/campaign_lbfgs \
+    --revision results/revision_lbfgs/assets --oracle results/revision/oracle --out paper/figures
+rare-al paper-figures --out paper/figures --plot-only      # redraw from figure_data only
+```
+
+| figure | file | figure data | source |
+|---|---|---|---|
+| Fig. 2 same mean, different tails | `fig_headline_tail.pdf` | `synthetic_risk_profile.csv` | `analyze` on campaign_lbfgs |
+| Fig. 3 rarity and dispersion | `fig_c1_v52.pdf` | `c1_decomposition.csv` | `analyze` |
+| Fig. 4 configuration effect | `fig_config_effect.pdf` | `config_effect.csv`, `config_yield.csv` | campaign (liblinear) + campaign_lbfgs real/image |
+| Fig. 5 real-data forest | `fig_forest_real.pdf` | `real_dataset_unit.csv` | `analyze` |
+| Fig. 6 RQ3 | `fig_rq3.pdf` | `opportunity_by_k.csv`, `opportunity_diffs.csv`, `rev_query_vs_campaign.csv` | oracle points; `revision-report` |
+| Fig. 7 validation by learner | `fig_validation.pdf` | `validation_by_learner.csv` | `revision-report` (validation cells) |
+| Supplementary figures | `fig_mean_tail_rf_v52.pdf`, `fig_tail_vs_ir_rf.pdf`, `fig_heatmap.pdf`, `fig_multistep.pdf`, `fig_c5_v52.pdf`, `fig_image_backbones.pdf` | as above, `tail_by_ir.csv`, `domain_risk.csv`, `c5.csv`, `image_backbones.csv` | `analyze`, campaign_lbfgs |
+
+The critical-difference diagrams and the risk map are those written by `rare-al analyze`
+(`results/campaign_lbfgs/assets/figures`). Intervals: datasets clustered by the 31 independent sources
+(tabular), datasets or tasks (images), base states (oracle), held-out units clustered by source or cell
+(validation); seeds are fixed in `reporting/paper_figures.py`.
+
+## Helper scripts (`scripts/revision/`)
+
+* `extract_final.py <results_dir>` keeps the last round of every trajectory (compact transfer of large runs).
+* `pool_share_round0.py` recomputes, without any campaign, the share of the pool scored at or above 0.5 by
+  the model fitted on the 30 seed labels, for LR with a penalized intercept, an unpenalized intercept and the
+  mechanism control, on every real and image state (Table 3 of the revised manuscript).

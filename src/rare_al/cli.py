@@ -210,6 +210,13 @@ def cmd_swap_learner(args):
         print(f"[swap-learner] {r}", flush=True)
 
 
+def cmd_paper_figures(args):
+    """Figures of the ESWA revision at the printed text width; figure data written to <out>/figure_data."""
+    from rare_al.reporting.paper_figures import build
+    build(args.campaign, args.lbfgs, args.revision, args.oracle, args.out, plot_only=args.plot_only,
+          log=lambda m: print(m, flush=True))
+
+
 def cmd_analyze(args):
     cfg = load_config(args.config)
     from rare_al.reporting.assets import build_all
@@ -278,6 +285,16 @@ def build_parser():
     p.add_argument("--no-clean", dest="no_clean", action="store_true",
                    help="add to an existing --out instead of rebuilding it")
     p.set_defaults(func=cmd_swap_learner)
+
+    p = sub.add_parser("paper-figures", help="figures of the paper (print width) + their figure data")
+    p.add_argument("--campaign", default="results/campaign", help="published campaign (penalized-intercept LR)")
+    p.add_argument("--lbfgs", default="results/campaign_lbfgs", help="swapped tree analysed by rare-al analyze")
+    p.add_argument("--revision", default="results/revision_lbfgs/assets", help="rare-al revision-report output")
+    p.add_argument("--oracle", default="results/revision/oracle", help="oracle points (unpenalized LR, RF, GBDT)")
+    p.add_argument("--out", default="paper/figures")
+    p.add_argument("--plot-only", dest="plot_only", action="store_true",
+                   help="redraw from <out>/figure_data without reading the trajectories")
+    p.set_defaults(func=cmd_paper_figures)
 
     p = sub.add_parser("validate-guidelines",
                        help="leave-one-domain-out out-of-sample validation of the decision procedure")

@@ -11,7 +11,8 @@ and a discovery-oracle / observability probe. One script regenerates every table
 and figure in the paper from the archived results.
 
 - **Paper:** doi:10.1016/j.eswa.2026.XXXXXX
-- **Data & results archive (Zenodo):** doi:10.5281/zenodo.23292060
+- **Data & results archive (Zenodo):** doi:10.5281/zenodo.23292060 (v2.0.0; the revision, v2.1.0, is a new version of the same record)
+- **Revision (v2.1.0):** see [`CHANGELOG.md`](CHANGELOG.md) and [`REVISION_ESWA.md`](REVISION_ESWA.md)
 - **License:** MIT (see [`LICENSE`](LICENSE)); bundled benchmark datasets keep their source licenses.
 
 > This release consolidates and extends our prior active-learning engine: the
@@ -164,7 +165,7 @@ If you use this software, please cite the paper and the archived release.
 @software{ros2026decisionsupportrarity,
   title     = {decision-support-rarity: Risk-aware active learning under class rarity},
   author    = {Ros, Fr\'ed\'eric and Bertrand-Bonvillain, Erwan and Nasser, Yassine},
-  version   = {2.0.0},
+  version   = {2.1.0},
   year      = {2026},
   publisher = {Zenodo},
   doi       = {10.5281/zenodo.23292060},

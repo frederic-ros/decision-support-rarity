@@ -1,7 +1,7 @@
 {
   "upload_type": "software",
-  "title": "decision-support-rarity: Risk-aware active learning under class rarity (ESWA companion software, v2.0.0)",
-  "description": "<p>Companion software for the paper <em>Risk-aware active learning under class rarity: A decision framework and cross-domain evaluation for expert systems</em> (Expert Systems with Applications). It implements a strictly paired-trajectory protocol, an acquisition-risk profile reporting the lower quantile and the material-loss probability, a non-maximized discovery oracle with an exploitability ratio, and evidence-graded guidelines, evaluated over 27 acquisition strategies and three downstream learners on a controlled synthetic grid, 42 real tabular datasets with preserved rarity, and 17 image tasks on two frozen embeddings.</p>",
+  "title": "decision-support-rarity: Risk-aware active learning under class rarity (ESWA companion software, v2.1.0)",
+  "description": "<p>Companion software for the paper <em>Risk-aware active learning under class rarity: A decision framework and cross-domain evaluation for expert systems</em> (Expert Systems with Applications). It implements a strictly paired-trajectory protocol, an acquisition-risk profile reporting the lower quantile and the material-loss probability, a non-maximized discovery oracle with an exploitability ratio, and evidence-graded guidelines, evaluated over 27 acquisition strategies and three downstream learners on a controlled synthetic grid, 42 real tabular datasets with preserved rarity, and 22 image tasks from 15 datasets on two frozen embeddings. Version 2.1.0 adds the analyses of the first review round: run-to-run noise floor of the reference, fixed-positive evaluation, base-state inference for the discovery oracle, out-of-sample validation of the selection rules, a learner-configuration study and the figures of the revised manuscript.</p>",
   "creators": [
     { "name": "Ros, Frédéric", "affiliation": "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France" },
     { "name": "Bertrand-Bonvillain, Erwan", "affiliation": "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France" },
@@ -13,7 +13,7 @@
   ],
   "license": "MIT",
   "access_right": "open",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "language": "eng",
   "related_identifiers": [
     { "relation": "isSupplementTo", "scheme": "url", "identifier": "https://github.com/frederic-ros/decision-support-rarity" }
