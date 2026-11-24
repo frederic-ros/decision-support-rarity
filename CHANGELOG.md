@@ -22,7 +22,8 @@ with the default options.
 * **Learner-setting sensitivity** (leaf size, number of trees, probability resolution, class weighting).
 * **Matched low-budget run** (26 and 94 labels from the same trajectories).
 * **`rare-al paper-figures`**: every figure of the revised manuscript at the printed text width, with the
-  figure data written alongside.
+  figure data written alongside; includes the discovery-mechanism figure (material-loss probability by
+  rare-label gap to the anchor, for the policies and for the anchor's tie-breaking rerun).
 * `rare-al revision-report`: all revision tables and statistics.
 
 ## 2.0.0 — submitted version

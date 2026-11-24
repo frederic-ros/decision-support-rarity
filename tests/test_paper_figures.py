@@ -47,3 +47,26 @@ def test_plot_skips_missing_inputs(tmp_path):
     P.plot(tmp_path, log=msgs.append)
     assert (tmp_path / "fig_headline_tail.pdf").exists()
     assert any("missing" in m for m in msgs)
+
+
+def test_mechanism(tmp_path):
+    rng = np.random.default_rng(1)
+    rows = []
+    for lr in ("logreg", "rf", "gbdt"):
+        for st in range(60):
+            ref = int(rng.integers(5, 40))
+            rows.append(dict(learner=lr, state_id=str(st), strategy="margin", n_rare_labeled=ref,
+                             ref_n_rare_labeled=ref, delta=0.0))
+            for s in ("typiclust", "coreset", "margin_rtb", "entropy"):
+                r = max(1, ref + int(rng.integers(-15, 6)) if s != "margin_rtb" else ref)
+                d = -0.95 if r == 1 else (-0.2 if r < ref - 10 else rng.normal(0, 0.02))
+                rows.append(dict(learner=lr, state_id=str(st), strategy=s, n_rare_labeled=r,
+                                 ref_n_rare_labeled=ref, delta=d))
+    gap, pairs = P.mechanism_data(pd.DataFrame(rows), min_n=5)
+    assert set(gap.group) <= {"policies", "rerun"} and "entropy" not in set(pairs.strategy)
+    pol = gap[(gap.group == "policies") & (gap.learner == "rf")].set_index("order").p
+    assert pol.loc[0] > pol.loc[3]
+    assert {"rerun"} <= set(pairs.kind)
+    P._style()
+    P.fig_mechanism(gap, pairs, tmp_path / "mech.pdf")
+    assert (tmp_path / "mech.pdf").stat().st_size > 1000

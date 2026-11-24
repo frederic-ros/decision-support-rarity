@@ -220,6 +220,10 @@ def prepare(campaign, lbfgs, revision, oracle, out, log=print):
             rows.append(dict(learner=str(lr), strategy=str(s), ir=float(ir), p=100 * m, lo=100 * lo, hi=100 * hi))
         pd.DataFrame(rows).to_csv(fd / "tail_by_ir.csv", index=False)
         log("[figdata] tail_by_ir.csv")
+        gap, pairs = mechanism_data(p)
+        gap.to_csv(fd / "mechanism_gap.csv", index=False)
+        pairs.to_csv(fd / "mechanism_pairs.csv", index=False)
+        log("[figdata] mechanism_gap.csv + mechanism_pairs.csv")
     # configuration effect: LR penalized (campaign) vs LR unpenalized, RF, GBDT (swapped tree)
     rows, yl = [], []
     for bench, unit, cl in (("real", "dataset", source_group), ("image", "dataset", None)):
@@ -279,6 +283,38 @@ def prepare(campaign, lbfgs, revision, oracle, out, log=print):
         pd.concat(vb).to_csv(fd / "validation_by_learner.csv", index=False)
         log("[figdata] validation_by_learner.csv")
     return fd
+
+
+GAP_EDGES = (-np.inf, -10.5, -4.5, -0.5, 0.5, 4.5, np.inf)
+GAP_LABELS = ("\u2264\u221211", "\u221210 to \u22125", "\u22124 to \u22121", "0", "+1 to +4", "\u2265+5")
+
+
+def mechanism_data(p, reference="margin", rerun="margin_rtb", exclude=("entropy", "least_confident"),
+                   total=-0.9, min_n=30):
+    """Discovery mechanism of the lower tail (synthetic grid, final round).
+
+    ``gap``: P(delta < -TAU) by rare-label gap (rare labels acquired by the policy minus those acquired by the
+    anchor in the same state), for the other policies pooled and for the anchor's tie-breaking rerun, with a
+    state-cluster bootstrap interval; bins with fewer than ``min_n`` trajectories are dropped.
+    ``pairs``: rare labels of policy and anchor for every tie-breaking rerun and every near-total loss
+    (delta < ``total``)."""
+    q = p[(p.strategy != reference) & ~p.strategy.isin(set(exclude))].copy()
+    q["group"] = np.where(q.strategy == rerun, "rerun", "policies")
+    q["gap"] = q.n_rare_labeled - q.ref_n_rare_labeled
+    q["gap_bin"] = pd.cut(q.gap, list(GAP_EDGES), labels=list(GAP_LABELS))
+    rows = []
+    for (lr, g, b), h in q.groupby(["learner", "group", "gap_bin"], observed=True):
+        if len(h) < min_n:
+            continue
+        v = (h.delta.to_numpy() < -TAU).astype(float)
+        m, lo, hi = _cboot(v, h.state_id.to_numpy(), n=1000, seed=5)
+        rows.append(dict(learner=str(lr), group=g, gap_bin=str(b), order=GAP_LABELS.index(str(b)),
+                         p=100 * m, lo=100 * lo, hi=100 * hi, n=len(h)))
+    gap = pd.DataFrame(rows)
+    sel = (q.group == "rerun") | (q.delta < total)
+    pairs = q.loc[sel, ["learner", "strategy", "state_id", "n_rare_labeled", "ref_n_rare_labeled", "delta"]].copy()
+    pairs["kind"] = np.where(pairs.strategy == rerun, "rerun", "near_total")
+    return gap, pairs.rename(columns={"n_rare_labeled": "rare", "ref_n_rare_labeled": "ref_rare"})
 
 
 def validation_by_learner(c, alphas=("0", "0.01", "0.02", "0.05", "0.1")):
@@ -695,6 +731,80 @@ def fig_tail_vs_ir(tb, path, learner="rf",
     _save(fig, path)
 
 
+def fig_mechanism(gap, pairs, path, learners=("rf", "gbdt", "logreg")):
+    """A: material-loss probability by rare-label gap, policies pooled (solid) and the anchor's tie-breaking
+    rerun (dashed). B: rare labels acquired by the anchor and by the policy, for the tie-breaking reruns (grey)
+    and the near-total losses (coloured), tree ensembles."""
+    fig = plt.figure(figsize=(W, 2.65))
+    ax = fig.add_axes([0.085, 0.30, 0.40, 0.58])
+    bx = fig.add_axes([0.60, 0.30, 0.38, 0.58])
+    xs = np.arange(len(GAP_LABELS))
+    off = {"rf": -0.12, "gbdt": 0.0, "logreg": 0.12}
+    for lr in learners:
+        g = gap[(gap.learner == lr) & (gap.group == "policies")].sort_values("order")
+        if g.empty:
+            continue
+        x = g.order.to_numpy() + off[lr]
+        ax.errorbar(x, g.p, yerr=[g.p - g.lo, g.hi - g.p], color=LCOL[lr], marker=LMARK[lr], ms=3.8, lw=1.2,
+                    elinewidth=0.7, capsize=0, label=f"{LNAME[lr]}, other policies")
+    for lr in learners:
+        g = gap[(gap.learner == lr) & (gap.group == "rerun")].sort_values("order")
+        if len(g) < 2:
+            continue
+        x = g.order.to_numpy() + off[lr]
+        ax.errorbar(x, g.p, yerr=[g.p - g.lo, g.hi - g.p], color=LCOL[lr], marker=LMARK[lr], ms=3.8, lw=1.0,
+                    ls=(0, (3, 2)), mfc="white", elinewidth=0.7, capsize=0,
+                    label=f"{LNAME[lr]}, Margin tie-breaking rerun")
+    ax.set_xticks(xs, GAP_LABELS, rotation=30, ha="right")
+    ax.set_xlim(-0.5, len(xs) - 0.5)
+    ax.set_ylim(bottom=0)
+    ax.set_xlabel("Rare-label gap to Margin at the final budget")
+    ax.set_ylabel(r"$P(\Delta<-0.10)$ (%)")
+    ax.grid(axis="y", color=GRID, lw=0.5)
+    ax.set_title("A  Losses follow the discovery gap", loc="left", color=INK)
+    ax.legend(frameon=False, loc="upper right", fontsize=6.2, handlelength=2.2, borderaxespad=0.2)
+    rng = np.random.default_rng(11)
+
+    def jit(v):
+        return np.asarray(v, float) * np.exp(rng.uniform(-0.07, 0.07, len(v)))
+    rr = pairs[(pairs.kind == "rerun") & pairs.learner.isin(["rf", "gbdt"])]
+    lost = rr.delta < -TAU
+    h1 = bx.scatter(jit(rr.ref_rare[~lost]), jit(rr.rare[~lost]), s=4, color="#c9c7c1", lw=0, zorder=1)
+    h2 = bx.scatter(jit(rr.ref_rare[lost]), jit(rr.rare[lost]), s=9, facecolor="white", edgecolor=MUTED, lw=0.6,
+                    zorder=2)
+    hs = []
+    for lr in ("rf", "gbdt"):
+        nt = pairs[(pairs.kind == "near_total") & (pairs.learner == lr)]
+        if nt.empty:
+            continue
+        hs.append((bx.scatter(jit(nt.ref_rare), jit(nt.rare), s=11, marker=LMARK[lr], color=LCOL[lr], lw=0,
+                              alpha=0.85, zorder=3), LNAME[lr]))
+    kw = dict(frameon=False, fontsize=6.2, title_fontsize=6.2, handletextpad=0.3, borderaxespad=0.2,
+              markerscale=1.3, alignment="left")
+    lg = bx.legend([h1, h2], ["loss \u2264 0.10", "loss > 0.10"], title="Margin, tie-breaking rerun",
+                   loc="upper left", **kw)
+    bx.add_artist(lg)
+    if hs:
+        bx.legend([h for h, _ in hs], [t for _, t in hs], title="Policy, loss > 0.9", loc="upper left",
+                  bbox_to_anchor=(0.0, 0.70), **kw)
+    lim = (0.8, max(200, float(pairs.ref_rare.max()) * 1.3))
+    bx.plot(lim, lim, color=MUTED, lw=0.6, ls=(0, (2, 2)), zorder=0)
+    bx.set_xscale("log")
+    bx.set_yscale("log")
+    bx.set_xlim(lim)
+    bx.set_ylim(lim)
+    ticks = [1, 2, 5, 10, 20, 50, 100]
+    for a in (bx.xaxis, bx.yaxis):
+        a.set_major_locator(FixedLocator(ticks))
+        a.set_major_formatter(FixedFormatter([str(t) for t in ticks]))
+        a.set_minor_locator(NullLocator())
+    bx.set_xlabel("Rare labels acquired by Margin")
+    bx.set_ylabel("Rare labels acquired by the policy")
+    bx.grid(color=GRID, lw=0.5)
+    bx.set_title("B  Near-total losses: no discovery", loc="left", color=INK)
+    _save(fig, path)
+
+
 def fig_heatmap(dr, path, alpha=0.10):
     dom_short = {"cybersecurity": "Cyber", "finance": "Finance", "industry": "Industry", "medicine": "Medicine",
                  "moderate_stratum": "Moderate", "moderate stratum": "Moderate"}
@@ -825,6 +935,8 @@ def plot(out, log=print):
         ("fig_validation.pdf", ("validation_by_learner",), lambda p: fig_validation(rd("validation_by_learner"), p)),
         ("fig_mean_tail_rf_v52.pdf", ("synthetic_risk_profile",), lambda p: fig_mean_tail(rd("synthetic_risk_profile"), p)),
         ("fig_tail_vs_ir_rf.pdf", ("tail_by_ir",), lambda p: fig_tail_vs_ir(rd("tail_by_ir"), p)),
+        ("fig_mechanism.pdf", ("mechanism_gap", "mechanism_pairs"),
+         lambda p: fig_mechanism(rd("mechanism_gap"), rd("mechanism_pairs"), p)),
         ("fig_heatmap.pdf", ("domain_risk",), lambda p: fig_heatmap(rd("domain_risk"), p)),
         ("fig_multistep.pdf", ("opportunity_by_k", "opportunity_diffs"),
          lambda p: fig_multistep(rd("opportunity_by_k"), rd("opportunity_diffs"), p)),
