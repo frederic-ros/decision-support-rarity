@@ -214,7 +214,7 @@ def cmd_paper_figures(args):
     """Figures of the ESWA revision at the printed text width; figure data written to <out>/figure_data."""
     from rare_al.reporting.paper_figures import build
     build(args.campaign, args.lbfgs, args.revision, args.oracle, args.out, plot_only=args.plot_only,
-          log=lambda m: print(m, flush=True))
+          log=lambda m: print(m, flush=True), runs=args.runs)
 
 
 def cmd_analyze(args):
@@ -291,6 +291,8 @@ def build_parser():
     p.add_argument("--lbfgs", default="results/campaign_lbfgs", help="swapped tree analysed by rare-al analyze")
     p.add_argument("--revision", default="results/revision_lbfgs/assets", help="rare-al revision-report output")
     p.add_argument("--oracle", default="results/revision/oracle", help="oracle points (unpenalized LR, RF, GBDT)")
+    p.add_argument("--runs", default="results/revision",
+                   help="revision runs (synthetic/: Margin replicates with another learner seed)")
     p.add_argument("--out", default="paper/figures")
     p.add_argument("--plot-only", dest="plot_only", action="store_true",
                    help="redraw from <out>/figure_data without reading the trajectories")

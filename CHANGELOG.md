@@ -23,7 +23,10 @@ with the default options.
 * **Matched low-budget run** (26 and 94 labels from the same trajectories).
 * **`rare-al paper-figures`**: every figure of the revised manuscript at the printed text width, with the
   figure data written alongside; includes the discovery-mechanism figure (material-loss probability by
-  rare-label gap to the anchor, for the policies and for the anchor's tie-breaking rerun).
+  rare-label gap to the anchor, for the policies and for the anchor's reruns with another learner seed), the strict
+  noise floor in the headline figure, the RQ3 figure under the three learners, the matched-budget and
+  opportunity-by-geometry figures (`--runs` points to the revision runs).
+* `revision-report`: Margin replicates excluded from the dispersion (C1) analysis.
 * `rare-al revision-report`: all revision tables and statistics.
 
 ## 2.0.0 — submitted version

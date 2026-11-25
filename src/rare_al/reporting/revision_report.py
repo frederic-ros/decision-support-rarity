@@ -134,6 +134,9 @@ class RevisionBuilder:
                    tc.groupby("ir").n_test_pos.describe().reset_index())
         if "fx_auprc" in fin:
             from rare_al.analysis.risk import c1_decomposition, risk_profile
+            # Margin replicates are noise controls, not strategies: excluded from the dispersion analysis
+            p = p[~p.strategy.astype(str).str.startswith(R.REP_PREFIX)]
+            fin = fin[~fin.strategy.astype(str).str.startswith(R.REP_PREFIX)]
             dec_orig = c1_decomposition(p)
             pfx = R.fixed_test_paired(fin, self.ref)
             dec_fx = c1_decomposition(pfx)

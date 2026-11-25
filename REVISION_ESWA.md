@@ -137,14 +137,18 @@ rare-al paper-figures --out paper/figures --plot-only      # redraw from figure_
 
 | figure | file | figure data | source |
 |---|---|---|---|
-| Fig. 2 same mean, different tails | `fig_headline_tail.pdf` | `synthetic_risk_profile.csv` | `analyze` on campaign_lbfgs |
-| Fig. 3 discovery mechanism and noise | `fig_mechanism.pdf` | `mechanism_gap.csv`, `mechanism_pairs.csv` | campaign_lbfgs synthetic trajectories (`margin_rtb` = tie-breaking rerun) |
+| Fig. 2 same mean, different tails | `fig_headline_tail.pdf` | `synthetic_risk_profile.csv`, `rev_noise_floor.csv` | `analyze` on campaign_lbfgs; `revision-report` (strict floor) |
+| Fig. 3 discovery mechanism and noise | `fig_mechanism.pdf` | `mechanism_gap.csv`, `mechanism_pairs.csv` | campaign_lbfgs synthetic trajectories + `--runs` (rev_synthetic: Margin reruns with another learner seed) |
 | Fig. 4 rarity and dispersion | `fig_c1_v52.pdf` | `c1_decomposition.csv` | `analyze` |
 | Fig. 5 configuration effect | `fig_config_effect.pdf` | `config_effect.csv`, `config_yield.csv` | campaign (liblinear) + campaign_lbfgs real/image |
 | Fig. 6 real-data forest | `fig_forest_real.pdf` | `real_dataset_unit.csv` | `analyze` |
-| Fig. 7 RQ3 | `fig_rq3.pdf` | `opportunity_by_k.csv`, `opportunity_diffs.csv`, `rev_query_vs_campaign.csv` | oracle points; `revision-report` |
+| Fig. 7 RQ3 (LR, RF, GBDT) | `fig_rq3.pdf` | `opportunity_by_k.csv`, `opportunity_diffs.csv`, `rev_query_vs_campaign.csv` | oracle points (three learners); `revision-report` |
 | Fig. 8 validation by learner | `fig_validation.pdf` | `validation_by_learner.csv` | `revision-report` (validation cells) |
 | Supplementary figures | `fig_mean_tail_rf_v52.pdf`, `fig_tail_vs_ir_rf.pdf`, `fig_heatmap.pdf`, `fig_multistep.pdf`, `fig_c5_v52.pdf`, `fig_image_backbones.pdf` | as above, `tail_by_ir.csv`, `domain_risk.csv`, `c5.csv`, `image_backbones.csv` | `analyze`, campaign_lbfgs |
+| Supplementary: matched budget, opportunity by geometry | `fig_budget_matched.pdf`, `fig_oracle_geometry.pdf` | `rev_budget_matched.csv`, `opportunity_by_geometry.csv` | `revision-report` (rev_budget); oracle points |
+
+Helper scripts for two tables: `scripts/revision/c1_fixed_eval.py` (Table S11, fixed-positive rarity effect) and
+`scripts/revision/rare_yield.py` (Tables 3 and S20, rare-case yield relative to random sampling).
 
 The critical-difference diagrams and the risk map are those written by `rare-al analyze`
 (`results/campaign_lbfgs/assets/figures`). Intervals: datasets clustered by the 31 independent sources

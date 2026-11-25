@@ -191,7 +191,7 @@ def _yield(df):
     return {str(lr): float(a["margin"].sum() / a["random"].sum()) for lr, a in acq.groupby(level=0)}
 
 
-def prepare(campaign, lbfgs, revision, oracle, out, log=print):
+def prepare(campaign, lbfgs, revision, oracle, out, log=print, runs=None):
     from rare_al.analysis.oracle import label_only_states
     from rare_al.analysis.revision import source_group
     campaign, lbfgs, revision, oracle = map(Path, (campaign, lbfgs, revision, oracle))
@@ -204,7 +204,7 @@ def prepare(campaign, lbfgs, revision, oracle, out, log=print):
             log(f"[figdata] {f}.csv <- {stats}")
     rs = revision / "stats" if (revision / "stats").exists() else revision
     for f in ("rev_query_vs_campaign", "rev_validation_real_cells_published", "rev_validation_synthetic_cells",
-              "rev_excess_tail"):
+              "rev_excess_tail", "rev_noise_floor", "rev_noise_floor_by_ir", "rev_budget_matched"):
         src = rs / f"{f}.csv"
         if src.exists():
             shutil.copy2(src, fd / f"{f}.csv")
@@ -220,7 +220,16 @@ def prepare(campaign, lbfgs, revision, oracle, out, log=print):
             rows.append(dict(learner=str(lr), strategy=str(s), ir=float(ir), p=100 * m, lo=100 * lo, hi=100 * hi))
         pd.DataFrame(rows).to_csv(fd / "tail_by_ir.csv", index=False)
         log("[figdata] tail_by_ir.csv")
-        gap, pairs = mechanism_data(p)
+        rerun = "margin_rtb"
+        rsyn = Path(runs) / "synthetic" / "trajectories.csv" if runs else None
+        if rsyn is not None and rsyn.exists():
+            # learner-seed replicates of the anchor (rev_synthetic; RF and GBDT trajectories identical to the campaign)
+            _, pr = _final_paired(rsyn)
+            reps = pr[pr.strategy.astype(str).str.startswith("margin_rep") & pr.learner.isin(["rf", "gbdt"])]
+            if len(reps):
+                p = pd.concat([p, reps[p.columns.intersection(reps.columns)]], ignore_index=True)
+                rerun = "margin_rep*"
+        gap, pairs = mechanism_data(p, rerun=rerun)
         gap.to_csv(fd / "mechanism_gap.csv", index=False)
         pairs.to_csv(fd / "mechanism_pairs.csv", index=False)
         log("[figdata] mechanism_gap.csv + mechanism_pairs.csv")
@@ -271,6 +280,7 @@ def prepare(campaign, lbfgs, revision, oracle, out, log=print):
                 d = (st[b] - st[a]).dropna()
                 m, lo, hi = _cboot(d.to_numpy(), d.index.to_numpy(), seed=6)
                 drows.append(dict(learner=lr, k_from=a, k_to=b, diff=m, lo=lo, hi=hi))
+        opportunity_by_geometry(P, k=1).to_csv(fd / "opportunity_by_geometry.csv", index=False)
         pd.DataFrame(orows).to_csv(fd / "opportunity_by_k.csv", index=False)
         pd.DataFrame(drows).to_csv(fd / "opportunity_diffs.csv", index=False)
         log("[figdata] opportunity_by_k.csv + opportunity_diffs.csv")
@@ -299,6 +309,11 @@ def mechanism_data(p, reference="margin", rerun="margin_rtb", exclude=("entropy"
     ``pairs``: rare labels of policy and anchor for every tie-breaking rerun and every near-total loss
     (delta < ``total``)."""
     q = p[(p.strategy != reference) & ~p.strategy.isin(set(exclude))].copy()
+    if rerun.endswith("*"):   # several replicates (e.g. margin_rep1..5) pooled as one rerun
+        is_rerun = q.strategy.astype(str).str.startswith(rerun[:-1])
+        q = q[is_rerun | ~q.strategy.isin(["margin_rtb"])]
+        q.loc[is_rerun, "strategy"] = rerun[:-1]
+        rerun = rerun[:-1]
     q["group"] = np.where(q.strategy == rerun, "rerun", "policies")
     q["gap"] = q.n_rare_labeled - q.ref_n_rare_labeled
     q["gap_bin"] = pd.cut(q.gap, list(GAP_EDGES), labels=list(GAP_LABELS))
@@ -334,7 +349,10 @@ def validation_by_learner(c, alphas=("0", "0.01", "0.02", "0.05", "0.1")):
 
 
 # ============================================================================ plot
-def fig_headline(rp, path, xmin=-0.05, ymin=0.06, ymax=45):
+def fig_headline(rp, path, xmin=-0.05, ymin=0.06, ymax=45, strict=None):
+    """``strict``: optional frame (learner, c_tau) of the anchor rerun with another learner seed
+    (rev_noise_floor.csv, noise == 'replicate'); drawn as the shaded floor, the tie-breaking rerun dashed."""
+    strict = {} if strict is None else dict(zip(strict.learner, 100 * strict.c_tau))
     rp = rp.copy()
     rp["C"] = 100 * rp.p_lt_tau
     fig, axs = plt.subplots(1, 3, figsize=(W, 2.85), sharey=True)
@@ -345,14 +363,21 @@ def fig_headline(rp, path, xmin=-0.05, ymin=0.06, ymax=45):
         d = rp[(rp.learner == lr) & ~rp.strategy.isin(["margin", "entropy", "least_confident", "margin_rtb"])].copy()
         fl = rp[(rp.learner == lr) & (rp.strategy == "margin_rtb")]
         floor = float(fl.C.iloc[0]) if len(fl) else 0.0
+        seed = float(strict.get(lr, floor)) if lr != "logreg" else 0.0
         ax.axvspan(-0.0055, 0.0055, color=BAND, zorder=0, lw=0)
-        if floor > 0:
-            ax.axhspan(ymin, floor, color="#dcdad3", zorder=0.5, lw=0)
-            ax.axhline(floor, color=MUTED, lw=0.8, ls="--", zorder=1)
-            inside = floor / ymin > 3
-            ax.text(xmin + 0.001, ymin * 1.25 if inside else floor * 1.15,
-                    f"anchor noise floor {floor:.1f}%" if floor >= 1 else f"anchor noise floor {floor:.2f}%",
-                    color=INK if inside else MUTED, fontsize=6.5, va="bottom")
+        if max(floor, seed) > 0:
+            top = max(floor, seed)
+            ax.axhspan(ymin, top, color="#dcdad3", zorder=0.5, lw=0)
+            ax.axhline(top, color=MUTED, lw=0.8, zorder=1)
+            if floor > 0 and abs(floor - top) > 1e-9:
+                ax.axhline(floor, color=MUTED, lw=0.8, ls="--", zorder=1)
+            lines = []
+            if strict and seed > 0:
+                lines.append(f"other learner seed {seed:.1f}%")
+            if floor > 0:
+                lines.append(f"ties only {floor:.2f}%" if floor < 1 else f"ties only {floor:.1f}%")
+            ax.text(xmin + 0.001, ymin * 1.2, "anchor floor:\n" + "\n".join(lines) if strict else
+                    f"anchor noise floor {floor:.1f}%", color=INK, fontsize=6.3, va="bottom", linespacing=1.15)
         else:
             ax.text(xmin + 0.001, ymin * 1.2, "anchor noise floor 0\n(deterministic learner)", color=MUTED,
                     fontsize=6.5, va="bottom")
@@ -408,7 +433,10 @@ def fig_headline(rp, path, xmin=-0.05, ymin=0.06, ymax=45):
          Line2D([], [], marker="o", ls="", mfc="white", mec=MUTED, mew=1.0, ms=5, label="control, probe or RCA"),
          Line2D([], [], marker="<", ls="", mfc=MUTED, mec="white", ms=5, label="mean below $-0.05$"),
          Line2D([], [], marker="s", ls="", mfc=BAND, mec=BAND, ms=7, label=r"near-neutral, $|$mean$|\leq0.005$"),
-         Line2D([], [], color=MUTED, ls="--", lw=0.8, label="anchor noise floor (tie-breaking rerun)")]
+         Line2D([], [], color=MUTED, ls="--", lw=0.8, label="anchor rerun, ties broken at random")]
+    if strict:
+        h.append(Line2D([], [], marker="s", ls="", mfc="#dcdad3", mec="#dcdad3", ms=7,
+                        label="anchor rerun, another learner seed"))
     fig.legend(handles=h, loc="lower center", ncol=3, frameon=False, fontsize=6.6, bbox_to_anchor=(0.5, -0.01),
                columnspacing=1.0, handletextpad=0.3)
     fig.tight_layout(rect=(0, 0.12, 1, 1), w_pad=0.4)
@@ -556,63 +584,149 @@ def _lr_name(df, prefer=("logreg_lbfgs", "logreg")):
     return next((n for n in prefer if n in have), None)
 
 
-def fig_rq3(opp, diffs, qvc, path):
+def fig_rq3(opp, diffs, qvc, path, learners=("logreg_lbfgs", "rf", "gbdt"), k=5):
+    """A: label-only opportunity by horizon for every learner. B: query-level gain at horizon k under LR and RF,
+    filled when Holm-adjusted p < 0.05. C: query-level gain vs. campaign mean gain on the same states."""
     from scipy import stats
-    o = opp[opp.learner == _lr_name(opp)].sort_values("k")
-    q = qvc[qvc.learner == _lr_name(qvc)] if "learner" in qvc else qvc
-    q = q[(q.k == 5) & (~q.identical_to_margin.astype(bool))].copy().sort_values("gain")
-    fig = plt.figure(figsize=(W, 2.9))
-    ax = fig.add_axes([0.115, 0.16, 0.15, 0.72])
+    key = {"logreg_lbfgs": "logreg", "logreg": "logreg", "rf": "rf", "gbdt": "gbdt"}
+    have = set(opp.learner)
+    lrs = [lr if lr in have else "logreg" for lr in learners if lr in have or (lr == "logreg_lbfgs" and "logreg" in have)]
+    fig = plt.figure(figsize=(W, 3.35))
+    # ---- A
+    ax = fig.add_axes([0.095, 0.15, 0.17, 0.72])
     ax.axhline(0, color=INK, lw=0.6)
-    ax.vlines(o.k, o.lo, o.hi, color=LCOL["logreg"], lw=1.2)
-    ax.plot(o.k, o["mean"], "-o", color=LCOL["logreg"], ms=4.5, mec="white", lw=1.0)
-    ax.text(0.97, 0.97, "\n".join(f"$k$={int(r.k)}: {r.mean:+.4f}" for r in o.itertuples()), transform=ax.transAxes,
-            fontsize=6.2, va="top", ha="right", color=INK)
+    off = dict(zip(lrs, np.linspace(-0.18, 0.18, len(lrs))))
+    for lr in lrs:
+        o = opp[opp.learner == lr].sort_values("k")
+        c = LCOL[key[lr]]
+        ax.vlines(o.k + off[lr], o.lo, o.hi, color=c, lw=1.0)
+        ax.plot(o.k + off[lr], o["mean"], "-", marker=LMARK[key[lr]], color=c, ms=4, mec="white", lw=1.0,
+                label=LNAME[key[lr]])
     ax.set_xticks([1, 3, 5])
     ax.set_xlim(0.4, 5.6)
+    ax.yaxis.set_major_locator(FixedLocator([0, 0.005, 0.01, 0.015]))
+    ax.set_yticklabels(["0", ".005", ".010", ".015"])
     ax.set_xlabel("Horizon $k$ (rounds)")
     ax.set_ylabel("Opportunity (AUPRC)")
     ax.set_title("A. Opportunity", loc="left", color=INK)
     ax.grid(axis="y", color=GRID, lw=0.5)
-    ax = fig.add_axes([0.445, 0.16, 0.21, 0.72])
-    y = np.arange(len(q))
+    ax.legend(frameon=False, loc="upper right", fontsize=6.3, handlelength=1.4, borderaxespad=0.1)
+    # ---- B
+    two = [lr for lr in lrs if key[lr] in ("logreg", "rf")]
+    q = qvc[(qvc.k == k) & ~qvc.identical_to_margin.astype(bool) & qvc.learner.isin(two)].copy()
+    order = (q[q.learner == two[-1]] if len(two) > 1 else q).sort_values("gain").policy.tolist()
+    order += [p for p in q.policy.unique() if p not in order]
+    ypos = {p: i for i, p in enumerate(order)}
+    ax = fig.add_axes([0.43, 0.15, 0.2, 0.72])
     ax.axvline(0, color=INK, lw=0.6)
-    O5 = float(q.O.iloc[0])
-    ax.axvline(O5, color=LCOL["logreg"], lw=0.8, ls="--")
-    ax.text(O5, len(q) - 0.3, " level ($k$=5)", color=LCOL["logreg"], fontsize=6.3, va="bottom")
-    ax.hlines(y, q.gain_ci_low, q.gain_ci_high, color=MUTED, lw=1.0)
-    ax.scatter(q.gain, y, s=12, color=INK, zorder=3)
-    ax.set_yticks(y)
-    ax.set_yticklabels([short(p) for p in q.policy], fontsize=6.3, color=INK)
+    for j, lr in enumerate(two):
+        g = q[q.learner == lr]
+        y = g.policy.map(ypos).to_numpy() + (0.18 if j == 0 else -0.18)
+        c = LCOL[key[lr]]
+        ax.hlines(y, g.gain_ci_low, g.gain_ci_high, color=c, lw=0.8, alpha=0.8)
+        sig = (g.p_gain_holm < 0.05).to_numpy()
+        ax.scatter(g.gain[~sig], y[~sig], s=11, marker=LMARK[key[lr]], facecolors="white", edgecolors=c, lw=0.8,
+                   zorder=3)
+        ax.scatter(g.gain[sig], y[sig], s=14, marker=LMARK[key[lr]], color=c, zorder=4)
+    ax.set_yticks(range(len(order)))
+    ax.set_yticklabels([short(p) for p in order], fontsize=6.0, color=INK)
     ax.tick_params(axis="y", length=0)
-    ax.set_ylim(-0.7, len(q) + 0.9)
-    ax.set_xticks([-0.002, 0, 0.002, 0.004])
-    ax.set_xticklabels(["\u2212.002", "0", ".002", ".004"])
-    ax.set_xlabel("Query-level gain [95% CI]")
-    ax.set_title(r"B. Holm $p\geq0.45$ for all", loc="left", color=INK)
+    ax.set_ylim(-0.7, len(order) - 0.3)
+    ax.set_xlabel(f"Query-level gain, $k$={k} [95% CI]")
+    ax.set_title("B. Query level", loc="left", color=INK)
+
     ax.grid(axis="x", color=GRID, lw=0.5)
     ax.spines["left"].set_visible(False)
-    ax = fig.add_axes([0.75, 0.16, 0.19, 0.72])
-    rho, pv = stats.spearmanr(q.gain, q.camp_mean)
+    ax.xaxis.set_major_locator(FixedLocator([-0.01, 0, 0.01, 0.02]))
+    ax.set_xticklabels(["\u2212.01", "0", ".01", ".02"])
+    # ---- C
+    ax = fig.add_axes([0.765, 0.15, 0.225, 0.72])
     ax.axhline(0, color=INK, lw=0.6)
     ax.axvline(0, color=INK, lw=0.6)
-    ax.scatter(q.gain, q.camp_mean, s=14, color=LCOL["logreg"], edgecolors="white", lw=0.5, zorder=3)
-    offs = {"rca": (-2, 6, "right"), "galaxy": (0, -11, "center"),
-            "similar_flqmi": (-4, 4, "right"), "anchoral": (4, -1, "left"), "typiclust": (5, -2, "left")}
-    names = {"rca": "RCA, Committee (LR)"}
-    for r in q.itertuples():
-        if r.policy in offs:
-            dx, dy, ha = offs[r.policy]
-            ax.annotate(names.get(r.policy, short(r.policy)), (r.gain, r.camp_mean), (dx, dy),
-                        textcoords="offset points", fontsize=6.3, color=INK, ha=ha)
-    ax.set_xlabel("Query-level gain ($k$=5)")
-    ax.set_ylabel("Campaign gain (same states)")
-    ax.set_title("C. Query vs. campaign", loc="left", color=INK)
-    ax.set_xticks([0, 0.001, 0.002])
-    ax.set_xticklabels(["0", ".001", ".002"])
-    ax.text(0.97, 0.12, f"Spearman ρ = {rho:.2f}\n(p = {pv:.2f})", transform=ax.transAxes, fontsize=6.5,
-            color=INK, ha="right")
+    txt = []
+    for lr in two:
+        g = q[q.learner == lr]
+        c = LCOL[key[lr]]
+        ax.scatter(g.gain, g.camp_mean, s=14, marker=LMARK[key[lr]], color=c, edgecolors="white", lw=0.5, zorder=3)
+        rho, pv = stats.spearmanr(g.gain, g.camp_mean)
+        txt.append((LNAME[key[lr]], rho, pv, c))
+        if key[lr] == "rf":
+            for r in g.sort_values("gain", ascending=False).head(3).itertuples():
+                ax.annotate(short(r.policy), (r.gain, r.camp_mean), (-4, -2), textcoords="offset points",
+                            fontsize=6.0, color=INK, ha="right", va="top")
+    for i, (n, rho, pv, c) in enumerate(txt):
+        ax.text(0.12, 0.58 - 0.08 * i, f"{n}: \u03c1 = {rho:+.2f} (p = {pv:.2f})".replace("-", "\u2212"),
+                transform=ax.transAxes, fontsize=6.2, color=c, ha="left", va="top")
+    ax.set_xlabel(f"Query-level gain ($k$={k})")
+    ax.set_ylabel("Campaign gain, same states", labelpad=1)
+    ax.set_title("C. Query vs. campaign", loc="left", color=INK, fontsize=7.5)
     ax.grid(color=GRID, lw=0.5)
+    ax.xaxis.set_major_locator(FixedLocator([0, 0.01]))
+    ax.set_xticklabels(["0", ".01"])
+    _save(fig, path)
+
+
+def opportunity_by_geometry(points, k=1, learners=None):
+    """Label-only opportunity by geometry and learner, base state as unit (state-cluster bootstrap)."""
+    from rare_al.analysis.oracle import label_only_states
+    rows = []
+    for lr in (learners or sorted(points.learner.unique())):
+        s = label_only_states(points[points.learner == lr].drop(columns="learner"), k)
+        s["base"] = s.state_id.astype(str).str.rsplit("|", n=1).str[0]
+        for geo, g in s.groupby("geometry"):
+            b = g.groupby("base").delta.mean()
+            m, lo, hi = _cboot(b.to_numpy(), b.index.to_numpy(), n=2000, seed=13)
+            rows.append(dict(learner=lr, geometry=geo, k=k, mean=m, lo=lo, hi=hi, n_base=len(b)))
+    return pd.DataFrame(rows)
+
+
+def fig_oracle_geometry(og, path, learners=("logreg_lbfgs", "rf", "gbdt")):
+    key = {"logreg_lbfgs": "logreg", "logreg": "logreg", "rf": "rf", "gbdt": "gbdt"}
+    lrs = [lr for lr in learners if lr in set(og.learner)]
+    geos = sorted(og.geometry.unique())
+    fig, ax = plt.subplots(figsize=(4.6, 2.4))
+    off = dict(zip(lrs, np.linspace(-0.22, 0.22, len(lrs))))
+    ax.axvline(0, color=INK, lw=0.6)
+    for lr in lrs:
+        g = og[og.learner == lr].set_index("geometry").reindex(geos)
+        y = np.arange(len(geos))[::-1] + off[lr]
+        c = LCOL[key[lr]]
+        ax.hlines(y, g.lo, g.hi, color=c, lw=1.0)
+        ax.scatter(g["mean"], y, s=16, marker=LMARK[key[lr]], color=c, edgecolors="white", lw=0.5, zorder=3,
+                   label=LNAME[key[lr]])
+    ax.set_yticks(np.arange(len(geos))[::-1], geos)
+    ax.tick_params(axis="y", length=0)
+    ax.set_xlabel("Label-only opportunity, $k$=1 (AUPRC) [95% CI, base states resampled]")
+    ax.grid(axis="x", color=GRID, lw=0.5)
+    ax.legend(frameon=False, loc="lower right", fontsize=6.5)
+    fig.tight_layout()
+    _save(fig, path)
+
+
+def fig_budget_matched(bm, path, strategies=("typiclust", "probcover", "coreset", "kmeans_diversity", "direct",
+                                              "class_balanced", "most_likely_positive"),
+                       learners=("logreg_lbfgs", "rf", "gbdt")):
+    """Matched low-budget run: paired gain vs. Margin at 26 and 94 labels from the same trajectories."""
+    key = {"logreg_lbfgs": "logreg", "logreg": "logreg", "rf": "rf", "gbdt": "gbdt"}
+    b = bm[bm.budget == "low_matched"] if "budget" in bm else bm
+    lrs = [lr for lr in learners if lr in set(b.learner)]
+    fig, axs = plt.subplots(1, len(lrs), figsize=(W, 2.3), sharey=True, squeeze=False)
+    for ax, lr in zip(axs[0], lrs):
+        ax.axvline(0, color=INK, lw=0.6)
+        for j, (n, mk) in enumerate(((26, "o"), (94, "s"))):
+            g = b[(b.learner == lr) & (b.n_labeled == n)].set_index("strategy").reindex(list(strategies))
+            y = np.arange(len(strategies))[::-1] + (0.15 if j == 0 else -0.15)
+            c = LCOL[key[lr]]
+            ax.hlines(y, g.ci_low, g.ci_high, color=c, lw=0.9, alpha=0.9)
+            ax.scatter(g["mean"], y, s=14, marker=mk, facecolors=c if j else "white", edgecolors=c, lw=0.9,
+                       zorder=3, label=f"{n} labels")
+        ax.set_title(LNAME[key[lr]], loc="left", color=INK)
+        ax.grid(axis="x", color=GRID, lw=0.5)
+        ax.tick_params(axis="y", length=0)
+    axs[0][0].set_yticks(np.arange(len(strategies))[::-1], [short(s) for s in strategies])
+    axs[0][len(lrs) // 2].set_xlabel("Paired AUPRC gain vs. Margin [95% CI]")
+    axs[0][-1].legend(frameon=False, loc="lower left", fontsize=6.3)
+    fig.tight_layout(w_pad=0.6)
     _save(fig, path)
 
 
@@ -738,13 +852,13 @@ def fig_tail_vs_ir(tb, path, learner="rf",
     _save(fig, path)
 
 
-def fig_mechanism(gap, pairs, path, learners=("rf", "gbdt", "logreg")):
+def fig_mechanism(gap, pairs, path, learners=("rf", "gbdt", "logreg"), rerun_label="Margin, other learner seed"):
     """A: material-loss probability by rare-label gap, policies pooled (solid) and the anchor's tie-breaking
     rerun (dashed). B: rare labels acquired by the anchor and by the policy, for the tie-breaking reruns (grey)
     and the near-total losses (coloured), tree ensembles."""
-    fig = plt.figure(figsize=(W, 2.65))
-    ax = fig.add_axes([0.085, 0.30, 0.40, 0.58])
-    bx = fig.add_axes([0.60, 0.30, 0.38, 0.58])
+    fig = plt.figure(figsize=(W, 3.2))
+    ax = fig.add_axes([0.085, 0.36, 0.40, 0.56])
+    bx = fig.add_axes([0.60, 0.36, 0.38, 0.56])
     xs = np.arange(len(GAP_LABELS))
     off = {"rf": -0.12, "gbdt": 0.0, "logreg": 0.12}
     for lr in learners:
@@ -761,7 +875,7 @@ def fig_mechanism(gap, pairs, path, learners=("rf", "gbdt", "logreg")):
         x = g.order.to_numpy() + off[lr]
         ax.errorbar(x, g.p, yerr=[g.p - g.lo, g.hi - g.p], color=LCOL[lr], marker=LMARK[lr], ms=3.8, lw=1.0,
                     ls=(0, (3, 2)), mfc="white", elinewidth=0.7, capsize=0,
-                    label=f"{LNAME[lr]}, Margin tie-breaking rerun")
+                    label=f"{LNAME[lr]}, {rerun_label}")
     ax.set_xticks(xs, GAP_LABELS, rotation=30, ha="right")
     ax.set_xlim(-0.5, len(xs) - 0.5)
     ax.set_ylim(bottom=0)
@@ -786,14 +900,14 @@ def fig_mechanism(gap, pairs, path, learners=("rf", "gbdt", "logreg")):
             continue
         hs.append((bx.scatter(jit(nt.ref_rare), jit(nt.rare), s=11, marker=LMARK[lr], color=LCOL[lr], lw=0,
                               alpha=0.85, zorder=3), LNAME[lr]))
-    kw = dict(frameon=False, fontsize=6.2, title_fontsize=6.2, handletextpad=0.3, borderaxespad=0.2,
+    kw = dict(frameon=False, fontsize=6.2, title_fontsize=6.2, handletextpad=0.3, borderaxespad=0.0,
               markerscale=1.3, alignment="left")
-    lg = bx.legend([h1, h2], ["loss \u2264 0.10", "loss > 0.10"], title="Margin, tie-breaking rerun",
-                   loc="upper left", **kw)
+    lg = bx.legend([h1, h2], ["loss \u2264 0.10", "loss > 0.10"], title=rerun_label.replace("Margin, ", "Margin\n"),
+                   loc="upper left", bbox_to_anchor=(-0.02, -0.25), **kw)
     bx.add_artist(lg)
     if hs:
-        bx.legend([h for h, _ in hs], [t for _, t in hs], title="Policy, loss > 0.9", loc="upper left",
-                  bbox_to_anchor=(0.0, 0.70), **kw)
+        bx.legend([h for h, _ in hs], [t for _, t in hs], title="Policy,\nloss > 0.9", loc="upper left",
+                  bbox_to_anchor=(0.62, -0.25), **kw)
     lim = (0.8, max(200, float(pairs.ref_rare.max()) * 1.3))
     bx.plot(lim, lim, color=MUTED, lw=0.6, ls=(0, (2, 2)), zorder=0)
     bx.set_xscale("log")
@@ -933,7 +1047,9 @@ def plot(out, log=print):
     def rd(n):
         return pd.read_csv(fd / f"{n}.csv")
     jobs = [
-        ("fig_headline_tail.pdf", ("synthetic_risk_profile",), lambda p: fig_headline(rd("synthetic_risk_profile"), p)),
+        ("fig_headline_tail.pdf", ("synthetic_risk_profile",),
+         lambda p: fig_headline(rd("synthetic_risk_profile"), p,
+                                strict=rd("rev_noise_floor").query("noise == 'replicate'") if has("rev_noise_floor") else None)),
         ("fig_c1_v52.pdf", ("c1_decomposition",), lambda p: fig_c1(rd("c1_decomposition"), p)),
         ("fig_config_effect.pdf", ("config_effect", "config_yield"), lambda p: fig_config(rd("config_effect"), rd("config_yield"), p)),
         ("fig_forest_real.pdf", ("real_dataset_unit",), lambda p: fig_forest(rd("real_dataset_unit"), p)),
@@ -943,7 +1059,12 @@ def plot(out, log=print):
         ("fig_mean_tail_rf_v52.pdf", ("synthetic_risk_profile",), lambda p: fig_mean_tail(rd("synthetic_risk_profile"), p)),
         ("fig_tail_vs_ir_rf.pdf", ("tail_by_ir",), lambda p: fig_tail_vs_ir(rd("tail_by_ir"), p)),
         ("fig_mechanism.pdf", ("mechanism_gap", "mechanism_pairs"),
-         lambda p: fig_mechanism(rd("mechanism_gap"), rd("mechanism_pairs"), p)),
+         lambda p: fig_mechanism(rd("mechanism_gap"), rd("mechanism_pairs"), p,
+                                 rerun_label="Margin, other learner seed"
+                                 if (rd("mechanism_pairs").strategy == "margin_rep").any() else "Margin, tie-breaking rerun")),
+        ("fig_budget_matched.pdf", ("rev_budget_matched",), lambda p: fig_budget_matched(rd("rev_budget_matched"), p)),
+        ("fig_oracle_geometry.pdf", ("opportunity_by_geometry",),
+         lambda p: fig_oracle_geometry(rd("opportunity_by_geometry"), p)),
         ("fig_heatmap.pdf", ("domain_risk",), lambda p: fig_heatmap(rd("domain_risk"), p)),
         ("fig_multistep.pdf", ("opportunity_by_k", "opportunity_diffs"),
          lambda p: fig_multistep(rd("opportunity_by_k"), rd("opportunity_diffs"), p)),
@@ -958,8 +1079,8 @@ def plot(out, log=print):
             log(f"[figure] {name}: missing {[n for n in need if not (fd / f'{n}.csv').exists()]}")
 
 
-def build(campaign, lbfgs, revision, oracle, out, plot_only=False, log=print):
+def build(campaign, lbfgs, revision, oracle, out, plot_only=False, log=print, runs=None):
     Path(out).mkdir(parents=True, exist_ok=True)
     if not plot_only:
-        prepare(campaign, lbfgs, revision, oracle, out, log=log)
+        prepare(campaign, lbfgs, revision, oracle, out, log=log, runs=runs)
     plot(out, log=log)
