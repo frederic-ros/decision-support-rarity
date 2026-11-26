@@ -13,7 +13,15 @@ abstract: >-
   reference, out-of-sample validation of the selection rules and a learner-configuration study.
 type: software
 version: 2.1.0
-doi: "10.5281/zenodo.23292060"  # v2.0.0; replace by the v2.1.0 version DOI once minted
+doi: "10.5281/zenodo.24550285"
+date-released: 2026-11-26
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.24550285"
+    description: "Zenodo archive (data, result records and code), version 2.1.0"
+  - type: doi
+    value: "10.5281/zenodo.23292059"
+    description: "Zenodo archive, all versions (resolves to the latest)"
 license: MIT
 repository-code: "https://github.com/frederic-ros/decision-support-rarity"
 url: "https://github.com/frederic-ros/decision-support-rarity"
@@ -29,15 +37,15 @@ authors:
     given-names: Frédéric
     email: frederic.ros@univ-orleans.fr
     affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0000-0001-9954-8399"
   - family-names: Bertrand-Bonvillain
     given-names: Erwan
     affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0009-0003-7428-9038"
   - family-names: Nasser
     given-names: Yassine
     affiliation: "Orléans University, INSA-CVL, PRISME UR 4229, Orléans F45072, France"
-    # orcid: "https://orcid.org/0000-0000-0000-0000"
+    orcid: "https://orcid.org/0000-0002-5347-0386"
 preferred-citation:
   type: article
   title: "Risk-aware active learning under class rarity: A decision framework and cross-domain evaluation for expert systems"

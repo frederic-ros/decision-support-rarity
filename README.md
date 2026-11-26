@@ -11,7 +11,7 @@ and a discovery-oracle / observability probe. One script regenerates every table
 and figure in the paper from the archived results.
 
 - **Paper:** doi:10.1016/j.eswa.2026.XXXXXX
-- **Data & results archive (Zenodo):** doi:10.5281/zenodo.23292060 (v2.0.0; the revision, v2.1.0, is a new version of the same record)
+- **Data & results archive (Zenodo):** doi:10.5281/zenodo.24550285 (v2.1.0, revision); all versions: doi:10.5281/zenodo.23292059 (v2.0.0 at submission: doi:10.5281/zenodo.23292060)
 - **Revision (v2.1.0):** see [`CHANGELOG.md`](CHANGELOG.md) and [`REVISION_ESWA.md`](REVISION_ESWA.md)
 - **License:** MIT (see [`LICENSE`](LICENSE)); bundled benchmark datasets keep their source licenses.
 
@@ -65,11 +65,12 @@ numpy 2.4.6, scipy 1.17.1, pandas 3.0.6, statsmodels 0.15.0, matplotlib 3.11.2
 `data/` and `results/` are **not** tracked in this repository (they are large and
 regenerable). Two ways to get them:
 
-1. **Download the archive** from Zenodo (doi:10.5281/zenodo.23292060) and unzip the
+1. **Download the archive** from Zenodo (doi:10.5281/zenodo.23292059, latest version) and unzip the
    derived data into `data/` and the result records into `results/`. The archive
    bundles the image **embedding caches**, the moderate strata (`rare27`,
-   `standard20`) and the run outputs (`campaign`, `first_pass`). See the archive's
-   `ARCHIVE_README.md`.
+   `standard20`), the run outputs (`campaign`, `first_pass`) and, since v2.1.0, the
+   revision runs (`results_revision_v2.1.0.zip`). See the archive's `ARCHIVE_README.md`
+   and `ARCHIVE_README_v2.1.0.md`.
 2. **Fetch and regenerate** from the original providers:
 
 ```bash
@@ -168,7 +169,7 @@ If you use this software, please cite the paper and the archived release.
   version   = {2.1.0},
   year      = {2026},
   publisher = {Zenodo},
-  doi       = {10.5281/zenodo.23292060},
+  doi       = {10.5281/zenodo.24550285},
   url       = {https://github.com/frederic-ros/decision-support-rarity}
 }
 ```

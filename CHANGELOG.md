@@ -2,6 +2,8 @@
 
 ## 2.1.0 — revision of ESWA-D-26-42849
 
+Archived on Zenodo with the revision result records: doi:10.5281/zenodo.24550285.
+
 Analyses and runs requested in the first review round, all resumable and documented in
 [`REVISION_ESWA.md`](REVISION_ESWA.md). The published trajectories (v2.0.0) are reproduced bit for bit
 with the default options.
